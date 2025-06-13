@@ -78,8 +78,28 @@ final class TaskExecutor {
         }
         Object ep = with.getEndpoint().get();
         URI uri = ep instanceof URI u ? u : URI.create(ep.toString());
+
+        // apply query parameters
+        if (with.getQuery() != null && with.getQuery().getHTTPQuery() != null) {
+            var props = with.getQuery().getHTTPQuery().getAdditionalProperties();
+            if (!props.isEmpty()) {
+                var sb = new StringBuilder(uri.toString());
+                sb.append(uri.getQuery() == null ? "?" : "&");
+                props.forEach((k, v) -> sb.append(k).append("=").append(v).append("&"));
+                sb.setLength(sb.length() - 1);
+                uri = URI.create(sb.toString());
+            }
+        }
+
         String method = with.getMethod() == null ? "GET" : with.getMethod().toUpperCase();
         HttpRequest.Builder builder = HttpRequest.newBuilder(uri);
+
+        // headers
+        if (with.getHeaders() != null && with.getHeaders().getHTTPHeaders() != null) {
+            with.getHeaders().getHTTPHeaders().getAdditionalProperties()
+                    .forEach(builder::header);
+        }
+
         Object body = with.getBody();
         if (method.equals("POST") || method.equals("PUT") || method.equals("PATCH")) {
             if (body instanceof String s) {
@@ -90,6 +110,7 @@ final class TaskExecutor {
         } else {
             builder.method(method, HttpRequest.BodyPublishers.noBody());
         }
+
         try {
             HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.discarding());
         } catch (Exception e) {
@@ -100,8 +121,22 @@ final class TaskExecutor {
     private static void handleForkTask(WorkflowContext ctx, ForkTask x) {
         ForkTaskConfiguration fork = x.getFork();
         List<TaskItem> branches = fork.getBranches();
+        List<dev.restate.sdk.DurableFuture<Void>> futures = new java.util.ArrayList<>();
+        int i = 0;
         for (var branch : branches) {
-            execute(ctx, branch.getTask());
+            final int branchId = i++;
+            futures.add(ctx.runAsync("branch-" + branchId, TypeTag.of(Void.class),
+                    dev.restate.sdk.common.RetryPolicy.defaultPolicy(), () -> {
+                        execute(ctx, branch.getTask());
+                        return null;
+                    }));
+        }
+        for (var f : futures) {
+            try {
+                f.await();
+            } catch (dev.restate.sdk.common.TerminalException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 
@@ -114,6 +149,10 @@ final class TaskExecutor {
         Object object = data.getObject();
         if (object instanceof String sv) {
             ctx.send(Request.of(target, TypeTag.of(String.class), TypeTag.of(String.class), sv));
+        } else if (object instanceof Integer iv) {
+            ctx.send(Request.of(target, TypeTag.of(Integer.class), TypeTag.of(Integer.class), iv));
+        } else if (object instanceof Long lv) {
+            ctx.send(Request.of(target, TypeTag.of(Long.class), TypeTag.of(Long.class), lv));
         } else {
             throw new UnsupportedOperationException();
         }
@@ -127,7 +166,18 @@ final class TaskExecutor {
             case RunShell r -> {
                 if (r.getShell() != null && r.getShell().getCommand() != null) {
                     try {
-                        new ProcessBuilder(r.getShell().getCommand()).start().waitFor();
+                        List<String> cmd = new java.util.ArrayList<>();
+                        cmd.add(r.getShell().getCommand());
+                        if (r.getShell().getArguments() != null) {
+                            r.getShell().getArguments().getAdditionalProperties().values()
+                                    .forEach(v -> cmd.add(v.toString()));
+                        }
+                        ProcessBuilder pb = new ProcessBuilder(cmd);
+                        if (r.getShell().getEnvironment() != null) {
+                            r.getShell().getEnvironment().getAdditionalProperties()
+                                    .forEach((k, v) -> pb.environment().put(k, v.toString()));
+                        }
+                        pb.start().waitFor();
                     } catch (Exception e) {
                         throw new IllegalStateException(e);
                     }
