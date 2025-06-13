@@ -23,6 +23,11 @@
             <artifactId>serverlessworkflow-api</artifactId>
             <version>7.1.0.Final</version>
         </dependency>
+        <dependency>
+            <groupId>com.cronutils</groupId>
+            <artifactId>cron-utils</artifactId>
+            <version>9.2.1</version>
+        </dependency>
         <!-- Restate SDK API -->
         <dependency>
             <groupId>dev.restate</groupId>
