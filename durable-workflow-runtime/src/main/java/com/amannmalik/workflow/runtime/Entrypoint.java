@@ -47,8 +47,14 @@ import io.serverlessworkflow.api.types.Workflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @dev.restate.sdk.annotation.Workflow
 public class Entrypoint {
@@ -77,7 +83,32 @@ public class Entrypoint {
                     }
                     case CallHTTP t -> {
                         HTTPArguments with = t.getWith();
-                        // TODO: use java http client to call endpoint
+                        if (with != null && with.getEndpoint() != null) {
+                            Object ep = with.getEndpoint().get();
+                            URI uri;
+                            if (ep instanceof URI u) {
+                                uri = u;
+                            } else {
+                                uri = URI.create(ep.toString());
+                            }
+                            String method = with.getMethod() == null ? "GET" : with.getMethod().toUpperCase();
+                            HttpRequest.Builder builder = HttpRequest.newBuilder(uri);
+                            Object body = with.getBody();
+                            if (method.equals("POST") || method.equals("PUT") || method.equals("PATCH")) {
+                                if (body instanceof String s) {
+                                    builder.method(method, HttpRequest.BodyPublishers.ofString(s));
+                                } else {
+                                    builder.method(method, HttpRequest.BodyPublishers.noBody());
+                                }
+                            } else {
+                                builder.method(method, HttpRequest.BodyPublishers.noBody());
+                            }
+                            try {
+                                HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.discarding());
+                            } catch (Exception e) {
+                                throw new IllegalStateException(e);
+                            }
+                        }
                     }
                     case CallGRPC t -> {
                         // use grpc client
@@ -156,7 +187,13 @@ public class Entrypoint {
                         // todo:
                     }
                     case RunShell r -> {
-                        // todo:
+                        if (r.getShell() != null && r.getShell().getCommand() != null) {
+                            try {
+                                new ProcessBuilder(r.getShell().getCommand()).start().waitFor();
+                            } catch (Exception e) {
+                                throw new IllegalStateException(e);
+                            }
+                        }
                     }
                     case RunWorkflow r -> {
                         // todo:
@@ -183,31 +220,45 @@ public class Entrypoint {
                 return;
             }
             case SwitchTask x -> {
+                Pattern p = Pattern.compile("\\.(\\w+)\\s*==\\s*\"([^\"]*)\"");
                 for (SwitchItem aSwitch : x.getSwitch()) {
                     SwitchCase switchCase = aSwitch.getSwitchCase();
                     String when = switchCase.getWhen();
-                    // todo: evaluate when condition
-                    FlowDirective then = switchCase.getThen();
-                    switch (then.getFlowDirectiveEnum()) {
-                        case CONTINUE -> {
-
-                        }
-                        case EXIT -> {
-
-                        }
-                        case END -> {
-
+                    boolean match = false;
+                    if (when != null) {
+                        Matcher m = p.matcher(when);
+                        if (m.matches()) {
+                            var key = m.group(1);
+                            var expected = m.group(2);
+                            var sk = StateKey.of(key, String.class);
+                            match = ctx.get(sk).map(expected::equals).orElse(false);
                         }
                     }
-
+                    if (match) {
+                        FlowDirective then = switchCase.getThen();
+                        if (then.getFlowDirectiveEnum() != null) {
+                            return;
+                        }
+                    }
                 }
 
             }
             case TryTask x -> {
-                // TODO:
                 List<TaskItem> aTry = x.getTry();
                 TryTaskCatch aCatch = x.getCatch();
-
+                try {
+                    for (var ti : aTry) {
+                        handleTask(ctx, ti.getTask());
+                    }
+                } catch (Exception e) {
+                    if (aCatch != null) {
+                        for (var ti : aCatch.getDo()) {
+                            handleTask(ctx, ti.getTask());
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
             }
             case WaitTask x -> {
                 var wtc = x.getWait();
@@ -219,12 +270,7 @@ public class Entrypoint {
                     var duri = wtc.getDurationInline();
                     resolvedDuration = resolvedDuration.plusDays(duri.getDays()).plusHours(duri.getHours()).plusMinutes(duri.getMinutes()).plusSeconds(duri.getSeconds()).plusMillis(duri.getMilliseconds());
                 }
-                try {
-                    ctx.wait(resolvedDuration.toMillis());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException(e);
-                }
+                ctx.sleep(resolvedDuration);
             }
             default -> throw new UnsupportedOperationException("Unexpected value: " + task.get());
         }
