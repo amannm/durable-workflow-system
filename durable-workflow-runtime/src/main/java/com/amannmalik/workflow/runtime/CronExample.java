@@ -37,7 +37,7 @@ import static com.cronutils.model.CronType.UNIX;
  * 2. Each job gets a unique ID and runs as a CronJob virtual object
  * 3. Jobs automatically reschedule themselves after each execution
  */
-public class Cron {
+public class CronExample {
 
     public record JobRequest(
             String cronExpression, // e.g. "0 0 * * *" (every day at midnight)
