@@ -19,6 +19,10 @@
 * Spring Boot
 * Spring Framework
 
+## Restate usage examples reference:
+
+`git clone https://github.com/restatedev/examples.git`
+
 ## Testing
 
 `./mvnw clean install`

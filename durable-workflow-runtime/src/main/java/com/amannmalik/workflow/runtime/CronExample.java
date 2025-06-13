@@ -1,0 +1,149 @@
+package com.amannmalik.workflow.runtime;
+
+
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.model.time.ExecutionTime;
+import com.cronutils.parser.CronParser;
+import dev.restate.common.Request;
+import dev.restate.common.Target;
+import dev.restate.sdk.Context;
+import dev.restate.sdk.ObjectContext;
+import dev.restate.sdk.SharedObjectContext;
+import dev.restate.sdk.annotation.Handler;
+import dev.restate.sdk.annotation.Name;
+import dev.restate.sdk.annotation.Service;
+import dev.restate.sdk.annotation.Shared;
+import dev.restate.sdk.annotation.VirtualObject;
+import dev.restate.sdk.common.StateKey;
+import dev.restate.sdk.common.TerminalException;
+import dev.restate.serde.TypeTag;
+
+import java.time.ZonedDateTime;
+import java.util.Optional;
+
+import static com.cronutils.model.CronType.UNIX;
+
+/*
+ * A distributed cron service built with Restate that schedules tasks based on cron expressions.
+ *
+ * Features:
+ * - Create cron jobs with standard cron expressions (e.g., "0 0 * * *" for daily at midnight)
+ * - Schedule any Restate service handler or virtual object method
+ * - Guaranteed execution with Restate's durability
+ * - Cancel and inspect running jobs
+ *
+ * Usage:
+ * 1. Send requests to CronInitiator.create() to start new jobs
+ * 2. Each job gets a unique ID and runs as a CronJob virtual object
+ * 3. Jobs automatically reschedule themselves after each execution
+ */
+public class Cron {
+
+    public record JobRequest(
+            String cronExpression, // e.g. "0 0 * * *" (every day at midnight)
+            String service,
+            String method, // Handler to execute with this schedule
+            Optional<String> key, // Optional Virtual Object key of the task to call
+            Optional<String> payload) {
+    } // Optional data to pass to the handler
+
+    public record JobInfo(JobRequest request, String nextExecutionTime, String nextExecutionId) {
+    }
+
+    @Name("CronJobInitiator")
+    @Service
+    public static class JobInitiator {
+        @Handler
+        public String create(Context ctx, JobRequest request) {
+            // Create a new job ID and initiate the cron job object for that ID
+            // We can then address this job object by its ID
+            var jobId = ctx.random().nextUUID().toString();
+            var cronJob = CronJobClient.fromContext(ctx, jobId).initiate(request).await();
+            return String.format(
+                    "Job created with ID %s and next execution time %s", jobId, cronJob.nextExecutionTime());
+        }
+    }
+
+    @Name("CronJob")
+    @VirtualObject
+    public static class Job {
+
+        private final StateKey<JobInfo> JOB_STATE = StateKey.of("job-state", JobInfo.class);
+        private final CronParser PARSER =
+                new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
+
+        @Handler
+        public JobInfo initiate(ObjectContext ctx, JobRequest request) {
+            if (ctx.get(JOB_STATE).isPresent()) {
+                throw new TerminalException("Job already exists for this ID");
+            }
+            return scheduleNextExecution(ctx, request);
+        }
+
+        @Handler
+        public void execute(ObjectContext ctx) {
+            JobRequest request =
+                    ctx.get(JOB_STATE).orElseThrow(() -> new TerminalException("Job not found")).request;
+
+            executeTask(ctx, request);
+            scheduleNextExecution(ctx, request);
+        }
+
+        @Handler
+        public void cancel(ObjectContext ctx) {
+            ctx.get(JOB_STATE)
+                    .ifPresent(jobState -> ctx.invocationHandle(jobState.nextExecutionId).cancel());
+
+            // Clear the job state
+            ctx.clearAll();
+        }
+
+        @Shared
+        public Optional<JobInfo> getInfo(SharedObjectContext ctx) {
+            return ctx.get(JOB_STATE);
+        }
+
+        private void executeTask(ObjectContext ctx, JobRequest job) {
+            Target target =
+                    (job.key.isPresent())
+                            ? Target.virtualObject(job.service, job.method, job.key.get())
+                            : Target.service(job.service, job.method);
+            var request =
+                    (job.payload.isPresent())
+                            ? Request.of(
+                            target, TypeTag.of(String.class), TypeTag.of(Void.class), job.payload.get())
+                            : Request.of(target, new byte[0]);
+            ctx.send(request);
+        }
+
+        private JobInfo scheduleNextExecution(ObjectContext ctx, JobRequest request) {
+            // Parse cron expression
+            ExecutionTime executionTime;
+            try {
+                executionTime = ExecutionTime.forCron(PARSER.parse(request.cronExpression));
+            } catch (IllegalArgumentException e) {
+                throw new TerminalException("Invalid cron expression: " + e.getMessage());
+            }
+
+            // Calculate next execution time
+            var now = ctx.run(ZonedDateTime.class, ZonedDateTime::now);
+            var delay =
+                    executionTime
+                            .timeToNextExecution(now)
+                            .orElseThrow(() -> new TerminalException("Cannot determine next execution time"));
+            var next =
+                    executionTime
+                            .nextExecution(now)
+                            .orElseThrow(() -> new TerminalException("Cannot determine next execution time"));
+
+            // Schedule next execution for this job
+            String thisJobId = ctx.key(); // This got generated by the CronJobInitiator
+            var handle = CronJobClient.fromContext(ctx, thisJobId).send().execute(delay);
+
+            // Save job state
+            var jobState = new JobInfo(request, next.toString(), handle.invocationId());
+            ctx.set(JOB_STATE, jobState);
+            return jobState;
+        }
+    }
+}
