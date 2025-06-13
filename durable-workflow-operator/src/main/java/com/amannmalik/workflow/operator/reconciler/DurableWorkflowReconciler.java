@@ -16,7 +16,34 @@ public class DurableWorkflowReconciler implements Reconciler<DurableWorkflow> {
 
     @Override
     public UpdateControl<DurableWorkflow> reconcile(DurableWorkflow desired, Context context) {
-        // TODO: load base manifests and compare
+        var client = context.getClient();
+        var name = desired.getMetadata().getName();
+        var namespace = desired.getMetadata().getNamespace();
+        if (namespace == null || namespace.isBlank()) {
+            namespace = "default";
+        }
+
+        Deployment existing = client.apps().deployments().inNamespace(namespace).withName(name).get();
+        if (existing == null) {
+            var deployment = new Deployment();
+            deployment.setMetadata(new io.fabric8.kubernetes.api.model.ObjectMeta());
+            deployment.getMetadata().setName(name);
+            deployment.getMetadata().setNamespace(namespace);
+            var spec = new io.fabric8.kubernetes.api.model.apps.DeploymentSpec();
+            var template = new io.fabric8.kubernetes.api.model.PodTemplateSpec();
+            template.setMetadata(new io.fabric8.kubernetes.api.model.ObjectMeta());
+            template.getMetadata().setLabels(java.util.Map.of("app", name));
+            var podSpec = new io.fabric8.kubernetes.api.model.PodSpec();
+            var container = new io.fabric8.kubernetes.api.model.Container();
+            container.setName("runtime");
+            container.setImage("durable-workflow-runtime:latest");
+            podSpec.setContainers(java.util.List.of(container));
+            template.setSpec(podSpec);
+            spec.setSelector(new io.fabric8.kubernetes.api.model.LabelSelector(null, java.util.Map.of("app", name)));
+            spec.setTemplate(template);
+            deployment.setSpec(spec);
+            client.resource(deployment).create();
+        }
         context.getSecondaryResource(Deployment.class);
         if (desired.getStatus() == null) {
             var status = new DurableWorkflowStatus();
