@@ -17,6 +17,7 @@ import dev.restate.sdk.annotation.VirtualObject;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.common.TerminalException;
 import dev.restate.serde.TypeTag;
+import io.serverlessworkflow.api.types.Workflow;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -44,8 +45,9 @@ public class CronExample {
             String service,
             String method, // Handler to execute with this schedule
             Optional<String> key, // Optional Virtual Object key of the task to call
-            Optional<String> payload) {
-    } // Optional data to pass to the handler
+            Optional<String> payload,
+            Optional<Workflow> workflow) {
+    } // Optional data to pass to the handler or workflow to run
 
     public record JobInfo(JobRequest request, String nextExecutionTime, String nextExecutionId) {
     }
@@ -110,10 +112,19 @@ public class CronExample {
                             ? Target.virtualObject(job.service, job.method, job.key.get())
                             : Target.service(job.service, job.method);
             var request =
-                    (job.payload.isPresent())
+                    (job.workflow.isPresent())
                             ? Request.of(
-                            target, TypeTag.of(String.class), TypeTag.of(Void.class), job.payload.get())
-                            : Request.of(target, new byte[0]);
+                                    target,
+                                    TypeTag.of(Workflow.class),
+                                    TypeTag.of(Void.class),
+                                    job.workflow.get())
+                            : (job.payload.isPresent())
+                                    ? Request.of(
+                                            target,
+                                            TypeTag.of(String.class),
+                                            TypeTag.of(Void.class),
+                                            job.payload.get())
+                                    : Request.of(target, new byte[0]);
             ctx.send(request);
         }
 
