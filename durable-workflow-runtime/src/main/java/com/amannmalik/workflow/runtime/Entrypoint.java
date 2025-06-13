@@ -15,6 +15,9 @@ public class Entrypoint {
 
     @dev.restate.sdk.annotation.Workflow
     public void run(WorkflowContext ctx, Workflow input) {
+        // TODO: figure out how this maps to a durable schedule through restate, example at https://github.com/restatedev/examples/blob/main/java/patterns-use-cases/src/main/java/my/example/cron/Cron.java
+        var schedule = input.getSchedule();
+
         var taskItems = input.getDo();
         for (var taskItem : taskItems) {
             Task task = taskItem.getTask();
