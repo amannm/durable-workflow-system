@@ -1,5 +1,9 @@
 package com.amannmalik.workflow.operator.service;
 
+import com.amannmalik.workflow.operator.model.DurableWorkflow;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +25,20 @@ public class WorkflowServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
-        // TODO: parse request for DurableWorkflow, map it to the resource class, then call kubernetes control plane and post it for the operator to pick up on next reconciliation
-
+        try {
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            mapper.registerModule(new JavaTimeModule());
+            DurableWorkflow workflow = mapper.readValue(req.getInputStream(), DurableWorkflow.class);
+            String ns = workflow.getMetadata().getNamespace();
+            if (ns == null || ns.isBlank()) {
+                ns = "default";
+                workflow.getMetadata().setNamespace(ns);
+            }
+            client.resource(workflow).inNamespace(ns).createOrReplace();
+            resp.setStatus(HttpServletResponse.SC_CREATED);
+        } catch (Exception e) {
+            log.error("Failed to create workflow", e);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
     }
 }
