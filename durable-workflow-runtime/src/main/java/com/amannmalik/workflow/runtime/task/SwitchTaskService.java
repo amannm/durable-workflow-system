@@ -1,7 +1,15 @@
 package com.amannmalik.workflow.runtime.task;
 
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
+import dev.restate.serde.Serde;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.FlowDirective;
 import io.serverlessworkflow.api.types.SwitchCase;
 import io.serverlessworkflow.api.types.SwitchItem;
@@ -9,16 +17,29 @@ import io.serverlessworkflow.api.types.SwitchTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@dev.restate.sdk.annotation.Service
 public class SwitchTaskService {
+
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
+            "SwitchTaskService",
+            ServiceType.SERVICE,
+            List.of(
+                    HandlerDefinition.of(
+                            "execute",
+                            HandlerType.SHARED,
+                            JacksonSerdes.of(SwitchTask.class),
+                            Serde.VOID,
+                            HandlerRunner.of(SwitchTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    )
+            )
+    );
 
     private static final Logger log = LoggerFactory.getLogger(SwitchTaskService.class);
 
-    @dev.restate.sdk.annotation.Handler
-    public void execute(WorkflowContext ctx, SwitchTask task) {
+    public static void execute(WorkflowContext ctx, SwitchTask task) {
         Pattern p = Pattern.compile("\\.(\\w+)\\s*==\\s*\"([^\"]*)\"");
         for (SwitchItem aSwitch : task.getSwitch()) {
             SwitchCase switchCase = aSwitch.getSwitchCase();

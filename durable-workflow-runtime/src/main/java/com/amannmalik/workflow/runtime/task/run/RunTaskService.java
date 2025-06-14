@@ -2,7 +2,15 @@ package com.amannmalik.workflow.runtime.task.run;
 
 import com.amannmalik.workflow.runtime.WorkflowRegistry;
 import com.amannmalik.workflow.runtime.WorkflowRunner;
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
+import dev.restate.serde.Serde;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.RunContainer;
 import io.serverlessworkflow.api.types.RunScript;
 import io.serverlessworkflow.api.types.RunShell;
@@ -15,13 +23,25 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-@dev.restate.sdk.annotation.Service
 public class RunTaskService {
+
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
+            "RunTaskService",
+            ServiceType.SERVICE,
+            List.of(
+                    HandlerDefinition.of(
+                            "execute",
+                            HandlerType.SHARED,
+                            JacksonSerdes.of(RunTask.class),
+                            Serde.VOID,
+                            HandlerRunner.of(RunTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    )
+            )
+    );
 
     private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
 
-    @dev.restate.sdk.annotation.Handler
-    public void execute(WorkflowContext ctx, RunTask task) {
+    public static void execute(WorkflowContext ctx, RunTask task) {
         RunTaskConfigurationUnion run = task.getRun();
         switch (run.get()) {
             case RunContainer r -> log.info("Run container not implemented: {}", r);

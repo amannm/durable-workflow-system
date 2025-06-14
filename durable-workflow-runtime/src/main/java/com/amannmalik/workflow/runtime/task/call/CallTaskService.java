@@ -3,8 +3,16 @@ package com.amannmalik.workflow.runtime.task.call;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
+import dev.restate.serde.Serde;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.CallAsyncAPI;
 import io.serverlessworkflow.api.types.CallFunction;
 import io.serverlessworkflow.api.types.CallGRPC;
@@ -26,14 +34,26 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@dev.restate.sdk.annotation.Service
 public class CallTaskService {
+
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
+            "CallTaskService",
+            ServiceType.SERVICE,
+            List.of(
+                    HandlerDefinition.of(
+                            "execute",
+                            HandlerType.SHARED,
+                            JacksonSerdes.of(CallTask.class),
+                            Serde.VOID,
+                            HandlerRunner.of(CallTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    )
+            )
+    );
 
     private static final Logger log = LoggerFactory.getLogger(CallTaskService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @dev.restate.sdk.annotation.Handler
-    public void execute(WorkflowContext ctx, CallTask task) {
+    public static void execute(WorkflowContext ctx, CallTask task) {
         switch (task.get()) {
             case CallFunction t -> log.info("Call function not implemented: {}", t);
             case CallAsyncAPI t -> log.info("Call AsyncAPI not implemented: {}", t);
