@@ -40,7 +40,7 @@ public class CronJob {
     @Handler
     public void execute(ObjectContext ctx) {
         JobRequest request =
-                ctx.get(JOB_STATE).orElseThrow(() -> new TerminalException("Job not found")).request;
+                ctx.get(JOB_STATE).orElseThrow(() -> new TerminalException("Job not found")).request();
 
         executeTask(ctx, request);
         scheduleNextExecution(ctx, request);
@@ -49,7 +49,7 @@ public class CronJob {
     @Handler
     public void cancel(ObjectContext ctx) {
         ctx.get(JOB_STATE)
-                .ifPresent(jobState -> ctx.invocationHandle(jobState.nextExecutionId).cancel());
+                .ifPresent(jobState -> ctx.invocationHandle(jobState.nextExecutionId()).cancel());
 
         // Clear the job state
         ctx.clearAll();
@@ -62,22 +62,22 @@ public class CronJob {
 
     private void executeTask(ObjectContext ctx, JobRequest job) {
         Target target =
-                (job.key.isPresent())
-                        ? Target.virtualObject(job.service, job.method, job.key.get())
-                        : Target.service(job.service, job.method);
+                (job.key().isPresent())
+                        ? Target.virtualObject(job.service(), job.method(), job.key().get())
+                        : Target.service(job.service(), job.method());
         var request =
-                (job.workflow.isPresent())
+                (job.workflow().isPresent())
                         ? Request.of(
                         target,
                         TypeTag.of(Workflow.class),
                         TypeTag.of(Void.class),
-                        job.workflow.get())
-                        : (job.payload.isPresent())
+                        job.workflow().get())
+                        : (job.payload().isPresent())
                         ? Request.of(
                         target,
                         TypeTag.of(String.class),
                         TypeTag.of(Void.class),
-                        job.payload.get())
+                        job.payload().get())
                         : Request.of(target, new byte[0]);
         ctx.send(request);
     }
@@ -86,7 +86,7 @@ public class CronJob {
         // Parse cron expression
         ExecutionTime executionTime;
         try {
-            executionTime = ExecutionTime.forCron(PARSER.parse(request.cronExpression));
+            executionTime = ExecutionTime.forCron(PARSER.parse(request.cronExpression()));
         } catch (IllegalArgumentException e) {
             throw new TerminalException("Invalid cron expression: " + e.getMessage());
         }
