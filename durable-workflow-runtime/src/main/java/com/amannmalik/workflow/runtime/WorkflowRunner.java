@@ -3,8 +3,14 @@ package com.amannmalik.workflow.runtime;
 import com.amannmalik.workflow.runtime.cron.CronJob;
 import com.amannmalik.workflow.runtime.cron.CronJobInitiator;
 import com.amannmalik.workflow.runtime.cron.CronJobRequest;
+import com.amannmalik.workflow.runtime.task.CallTaskService;
+import com.amannmalik.workflow.runtime.task.EmitTaskService;
 import com.amannmalik.workflow.runtime.task.ForkTaskService;
 import com.amannmalik.workflow.runtime.task.RunTaskService;
+import com.amannmalik.workflow.runtime.task.SetTaskService;
+import com.amannmalik.workflow.runtime.task.SwitchTaskService;
+import com.amannmalik.workflow.runtime.task.TryTaskService;
+import com.amannmalik.workflow.runtime.task.WaitTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.Endpoint;
@@ -29,14 +35,20 @@ public class WorkflowRunner {
     @dev.restate.sdk.annotation.Workflow
     public void run(WorkflowContext ctx, Workflow input) {
         var schedule = input.getSchedule();
-        var tasks = input.getDo();
         if (schedule != null && schedule.getCron() != null) {
-            CronJobRequest request = new CronJobRequest(schedule.getCron(), "WorkflowTaskService", "run", Optional.empty(), Optional.empty(), Optional.of(input));
+            CronJobRequest request = new CronJobRequest(schedule.getCron(), "WorkflowRunner", "runInternal", Optional.empty(), Optional.empty(), Optional.of(input));
             Services.callService(ctx, "CronJobInitiator", "create", request, String.class).await();
         } else {
-            for (var task : tasks) {
-                Services.callService(ctx, "WorkflowTaskService", "run", tasks, Void.class).await();
-            }
+            runInternal(ctx, input);
+        }
+    }
+
+    @dev.restate.sdk.annotation.Workflow
+    public void runInternal(WorkflowContext ctx, Workflow input) {
+        var taskItems = input.getDo();
+        WorkflowTaskService wts = new WorkflowTaskService();
+        for (var ti : taskItems) {
+            wts.execute(ctx, ti.getTask());
         }
     }
 
@@ -46,6 +58,12 @@ public class WorkflowRunner {
                 .bind(new WorkflowTaskService())
                 .bind(new ForkTaskService())
                 .bind(new RunTaskService())
+                .bind(new CallTaskService())
+                .bind(new EmitTaskService())
+                .bind(new SetTaskService())
+                .bind(new SwitchTaskService())
+                .bind(new TryTaskService())
+                .bind(new WaitTaskService())
                 .bind(new CronJobInitiator())
                 .bind(new CronJob());
         RestateHttpServer.listen(builder);
