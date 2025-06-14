@@ -1,15 +1,53 @@
-package com.amannmalik.workflow.runtime;
+package com.amannmalik.workflow.runtime.task;
 
+import com.amannmalik.workflow.runtime.Services;
+import com.amannmalik.workflow.runtime.WorkflowRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.restate.common.Request;
 import dev.restate.common.Target;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.serde.TypeTag;
-import io.serverlessworkflow.api.types.*;
-import com.amannmalik.workflow.runtime.WorkflowRegistry;
-import com.amannmalik.workflow.runtime.Entrypoint;
+import io.serverlessworkflow.api.types.CallAsyncAPI;
+import io.serverlessworkflow.api.types.CallFunction;
+import io.serverlessworkflow.api.types.CallGRPC;
+import io.serverlessworkflow.api.types.CallHTTP;
+import io.serverlessworkflow.api.types.CallOpenAPI;
+import io.serverlessworkflow.api.types.CallTask;
+import io.serverlessworkflow.api.types.DoTask;
+import io.serverlessworkflow.api.types.EmitEventDefinition;
+import io.serverlessworkflow.api.types.EmitTask;
+import io.serverlessworkflow.api.types.EmitTaskConfiguration;
+import io.serverlessworkflow.api.types.EventData;
+import io.serverlessworkflow.api.types.EventProperties;
+import io.serverlessworkflow.api.types.FlowDirective;
+import io.serverlessworkflow.api.types.ForTask;
+import io.serverlessworkflow.api.types.ForkTask;
+import io.serverlessworkflow.api.types.HTTPArguments;
+import io.serverlessworkflow.api.types.ListenTask;
+import io.serverlessworkflow.api.types.RaiseTask;
+import io.serverlessworkflow.api.types.RunContainer;
+import io.serverlessworkflow.api.types.RunScript;
+import io.serverlessworkflow.api.types.RunShell;
+import io.serverlessworkflow.api.types.RunTask;
+import io.serverlessworkflow.api.types.RunTaskConfigurationUnion;
+import io.serverlessworkflow.api.types.RunWorkflow;
+import io.serverlessworkflow.api.types.SetTask;
+import io.serverlessworkflow.api.types.SwitchCase;
+import io.serverlessworkflow.api.types.SwitchItem;
+import io.serverlessworkflow.api.types.SwitchTask;
+import io.serverlessworkflow.api.types.Task;
+import io.serverlessworkflow.api.types.TaskItem;
+import io.serverlessworkflow.api.types.TryTask;
+import io.serverlessworkflow.api.types.TryTaskCatch;
+import io.serverlessworkflow.api.types.WaitTask;
+import io.serverlessworkflow.api.types.Workflow;
+import net.thisptr.jackson.jq.JsonQuery;
+import net.thisptr.jackson.jq.Scope;
+import net.thisptr.jackson.jq.Versions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,26 +57,17 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import net.thisptr.jackson.jq.JsonQuery;
-import net.thisptr.jackson.jq.Scope;
-import net.thisptr.jackson.jq.Versions;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Executes individual workflow tasks.
- */
-final class TaskExecutor {
+@dev.restate.sdk.annotation.Service
+public class WorkflowTaskService {
 
-    private static final Logger log = LoggerFactory.getLogger(TaskExecutor.class);
+    private static final Logger log = LoggerFactory.getLogger(WorkflowTaskService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private TaskExecutor() {
-    }
-
-    static void execute(WorkflowContext ctx, Task task) {
+    @dev.restate.sdk.annotation.Handler
+    public void execute(WorkflowContext ctx, Task task) {
         switch (task.get()) {
             case CallTask x -> handleCallTask(ctx, x);
             case DoTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
@@ -113,8 +142,7 @@ final class TaskExecutor {
             vars.add(varMatcher.group(1));
         }
         for (String key : vars) {
-            ctx.get(StateKey.of(key, Object.class))
-                    .ifPresent(v -> root.set(key, MAPPER.valueToTree(v)));
+            ctx.get(StateKey.of(key, Object.class)).ifPresent(v -> root.set(key, MAPPER.valueToTree(v)));
         }
         try {
             JsonQuery q = JsonQuery.compile(expr, Versions.JQ_1_6);
@@ -147,10 +175,7 @@ final class TaskExecutor {
             if (!props.isEmpty()) {
                 var sb = new StringBuilder(uri.toString());
                 sb.append(uri.getQuery() == null ? "?" : "&");
-                props.forEach((k, v) -> sb.append(k)
-                        .append("=")
-                        .append(resolveExpressions(ctx, v))
-                        .append("&"));
+                props.forEach((k, v) -> sb.append(k).append("=").append(resolveExpressions(ctx, v)).append("&"));
                 sb.setLength(sb.length() - 1);
                 uri = URI.create(sb.toString());
             }
@@ -161,8 +186,7 @@ final class TaskExecutor {
 
         // headers
         if (with.getHeaders() != null && with.getHeaders().getHTTPHeaders() != null) {
-            with.getHeaders().getHTTPHeaders().getAdditionalProperties()
-                    .forEach((k,v) -> builder.header(k, resolveExpressions(ctx, v)));
+            with.getHeaders().getHTTPHeaders().getAdditionalProperties().forEach((k, v) -> builder.header(k, resolveExpressions(ctx, v)));
         }
 
         Object body = with.getBody();
@@ -177,36 +201,15 @@ final class TaskExecutor {
         }
 
         try {
-            HttpClient client =
-                    with.isRedirect()
-                            ? HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build()
-                            : HttpClient.newHttpClient();
+            HttpClient client = with.isRedirect() ? HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build() : HttpClient.newHttpClient();
             client.send(builder.build(), HttpResponse.BodyHandlers.discarding());
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private static void handleForkTask(WorkflowContext ctx, ForkTask x) {
-        ForkTaskConfiguration fork = x.getFork();
-        List<TaskItem> branches = fork.getBranches();
-        List<dev.restate.sdk.DurableFuture<Void>> futures = new java.util.ArrayList<>();
-        int i = 0;
-        for (var branch : branches) {
-            final int branchId = i++;
-            futures.add(ctx.runAsync("branch-" + branchId, TypeTag.of(Void.class),
-                    dev.restate.sdk.common.RetryPolicy.defaultPolicy(), () -> {
-                        execute(ctx, branch.getTask());
-                        return null;
-                    }));
-        }
-        for (var f : futures) {
-            try {
-                f.await();
-            } catch (dev.restate.sdk.common.TerminalException e) {
-                throw new IllegalStateException(e);
-            }
-        }
+    private static void handleForkTask(WorkflowContext ctx, ForkTask task) {
+        Services.callService(ctx, "ForkTaskService", "execute", task, Void.class).await();
     }
 
     private static void handleEmitTask(WorkflowContext ctx, EmitTask x) {
@@ -238,13 +241,11 @@ final class TaskExecutor {
                         List<String> cmd = new java.util.ArrayList<>();
                         cmd.add(r.getShell().getCommand());
                         if (r.getShell().getArguments() != null) {
-                            r.getShell().getArguments().getAdditionalProperties().values()
-                                    .forEach(v -> cmd.add(v.toString()));
+                            r.getShell().getArguments().getAdditionalProperties().values().forEach(v -> cmd.add(v.toString()));
                         }
                         ProcessBuilder pb = new ProcessBuilder(cmd);
                         if (r.getShell().getEnvironment() != null) {
-                            r.getShell().getEnvironment().getAdditionalProperties()
-                                    .forEach((k, v) -> pb.environment().put(k, v.toString()));
+                            r.getShell().getEnvironment().getAdditionalProperties().forEach((k, v) -> pb.environment().put(k, v.toString()));
                         }
                         pb.start().waitFor();
                     } catch (Exception e) {
@@ -262,6 +263,8 @@ final class TaskExecutor {
         if (cfg == null) {
             return;
         }
+
+        Services.callService(ctx, "WorkflowTaskService", "execute", task, Void.class).await();
         Workflow wf = WorkflowRegistry.get(cfg.getNamespace(), cfg.getName(), cfg.getVersion());
         if (wf == null) {
             log.warn("Sub-workflow not found: {}:{}:{}", cfg.getNamespace(), cfg.getName(), cfg.getVersion());
@@ -334,8 +337,7 @@ final class TaskExecutor {
             resolvedDuration = Duration.parse(de);
         } else {
             var duri = wtc.getDurationInline();
-            resolvedDuration = resolvedDuration.plusDays(duri.getDays()).plusHours(duri.getHours())
-                    .plusMinutes(duri.getMinutes()).plusSeconds(duri.getSeconds()).plusMillis(duri.getMilliseconds());
+            resolvedDuration = resolvedDuration.plusDays(duri.getDays()).plusHours(duri.getHours()).plusMinutes(duri.getMinutes()).plusSeconds(duri.getSeconds()).plusMillis(duri.getMilliseconds());
         }
         ctx.sleep(resolvedDuration);
     }

@@ -1,27 +1,48 @@
 package com.amannmalik.workflow.runtime;
 
-import dev.restate.sdk.WorkflowContext;
-import dev.restate.sdk.common.StateKey;
-import io.serverlessworkflow.api.types.*;
-import io.serverlessworkflow.api.types.Document;
-import io.serverlessworkflow.api.types.RunTask;
-import io.serverlessworkflow.api.types.RunTaskConfigurationUnion;
-import io.serverlessworkflow.api.types.RunWorkflow;
-import io.serverlessworkflow.api.types.SubflowConfiguration;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import java.net.URI;
-import java.time.Duration;
-import java.util.List;
-
+import com.amannmalik.workflow.runtime.task.TaskExecutor;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import dev.restate.sdk.WorkflowContext;
+import dev.restate.sdk.common.StateKey;
 import dev.restate.serde.TypeTag;
-import com.amannmalik.workflow.runtime.WorkflowRegistry;
+import io.serverlessworkflow.api.types.CallHTTP;
+import io.serverlessworkflow.api.types.CallTask;
+import io.serverlessworkflow.api.types.Document;
+import io.serverlessworkflow.api.types.DurationInline;
+import io.serverlessworkflow.api.types.Endpoint;
+import io.serverlessworkflow.api.types.ForkTask;
+import io.serverlessworkflow.api.types.ForkTaskConfiguration;
+import io.serverlessworkflow.api.types.HTTPArguments;
+import io.serverlessworkflow.api.types.HTTPHeaders;
+import io.serverlessworkflow.api.types.HTTPQuery;
+import io.serverlessworkflow.api.types.Headers;
+import io.serverlessworkflow.api.types.Query;
+import io.serverlessworkflow.api.types.RunShell;
+import io.serverlessworkflow.api.types.RunTask;
+import io.serverlessworkflow.api.types.RunTaskConfigurationUnion;
+import io.serverlessworkflow.api.types.RunWorkflow;
+import io.serverlessworkflow.api.types.Set;
+import io.serverlessworkflow.api.types.SetTask;
+import io.serverlessworkflow.api.types.Shell;
+import io.serverlessworkflow.api.types.SubflowConfiguration;
+import io.serverlessworkflow.api.types.Task;
+import io.serverlessworkflow.api.types.TaskItem;
+import io.serverlessworkflow.api.types.TimeoutAfter;
+import io.serverlessworkflow.api.types.TryTask;
+import io.serverlessworkflow.api.types.TryTaskCatch;
+import io.serverlessworkflow.api.types.WaitTask;
+import io.serverlessworkflow.api.types.Workflow;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.net.URI;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TaskExecutorTest {
 
@@ -324,7 +345,7 @@ class TaskExecutorTest {
         t.setRunTask(rt);
         root.setDo(Collections.singletonList(new TaskItem("run", t)));
 
-        Entrypoint ep = new Entrypoint();
+        WorkflowRunner ep = new WorkflowRunner();
         ep.run(ctx, root);
 
         Mockito.verify(ctx).set(Mockito.argThat(k -> k.name().equals("flag")), Mockito.eq("yes"));
