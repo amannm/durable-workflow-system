@@ -38,6 +38,7 @@ public class SwitchTaskService {
     );
 
     private static final Logger log = LoggerFactory.getLogger(SwitchTaskService.class);
+    public static final StateKey<String> NEXT = StateKey.of("switch-next", String.class);
 
     public static void execute(WorkflowContext ctx, SwitchTask task) {
         Pattern p = Pattern.compile("\\.(\\w+)\\s*==\\s*\"([^\"]*)\"");
@@ -56,9 +57,14 @@ public class SwitchTaskService {
             }
             if (match) {
                 FlowDirective then = switchCase.getThen();
-                if (then.getFlowDirectiveEnum() != null) {
-                    return;
+                if (then != null) {
+                    if (then.getFlowDirectiveEnum() != null) {
+                        ctx.set(NEXT, then.getFlowDirectiveEnum().name());
+                    } else if (then.getString() != null) {
+                        ctx.set(NEXT, then.getString());
+                    }
                 }
+                return;
             }
         }
     }
