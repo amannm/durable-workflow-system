@@ -37,7 +37,7 @@ public class WorkflowTaskService {
             case ForTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
             case ListenTask x -> log.info("Listen task not implemented: {}", x);
             case RaiseTask x -> logRaise(x);
-            // TODO: these as well
+            // TODO: don't call methods directly anywhere for any annotated restate service/virtualobject/workflow
             case RunTask x -> runTaskService.execute(ctx, x);
             case SetTask x -> setTaskService.execute(ctx, x);
             case SwitchTask x -> switchTaskService.execute(ctx, x);
