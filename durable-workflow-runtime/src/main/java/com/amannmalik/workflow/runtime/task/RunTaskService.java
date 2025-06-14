@@ -1,8 +1,7 @@
 package com.amannmalik.workflow.runtime.task;
 
-import com.amannmalik.workflow.runtime.Services;
 import com.amannmalik.workflow.runtime.WorkflowRegistry;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.amannmalik.workflow.runtime.WorkflowRunner;
 import dev.restate.sdk.WorkflowContext;
 import io.serverlessworkflow.api.types.RunContainer;
 import io.serverlessworkflow.api.types.RunScript;
@@ -20,7 +19,6 @@ import java.util.List;
 public class RunTaskService {
 
     private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @dev.restate.sdk.annotation.Handler
     public void execute(WorkflowContext ctx, RunTask task) {
@@ -59,13 +57,12 @@ public class RunTaskService {
         }
 
 
-        Services.callService(ctx, "WorkflowTaskService", "execute", task, Void.class).await();
         Workflow wf = WorkflowRegistry.get(cfg.getNamespace(), cfg.getName(), cfg.getVersion());
         if (wf == null) {
             log.warn("Sub-workflow not found: {}:{}:{}", cfg.getNamespace(), cfg.getName(), cfg.getVersion());
             return;
         }
-        new Entrypoint().runInternal(ctx, wf);
+        new WorkflowRunner().runInternal(ctx, wf);
     }
 
 }
