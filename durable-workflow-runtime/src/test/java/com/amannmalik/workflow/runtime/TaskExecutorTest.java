@@ -1,6 +1,6 @@
 package com.amannmalik.workflow.runtime;
 
-import com.amannmalik.workflow.runtime.task.TaskExecutor;
+import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -57,7 +57,7 @@ class TaskExecutorTest {
         wt.setWait(to);
         Task t = new Task();
         t.setWaitTask(wt);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
         Mockito.verify(ctx).sleep(Duration.ofSeconds(1));
     }
 
@@ -70,7 +70,7 @@ class TaskExecutorTest {
         wt.setWait(to);
         Task t = new Task();
         t.setWaitTask(wt);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
         Mockito.verify(ctx).sleep(Duration.ofSeconds(2));
     }
 
@@ -93,7 +93,7 @@ class TaskExecutorTest {
         rt.setRun(u);
         Task t = new Task();
         t.setRunTask(rt);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
     }
 
     @Test
@@ -131,7 +131,7 @@ class TaskExecutorTest {
         ct.setCallHTTP(ch);
         Task t = new Task();
         t.setCallTask(ct);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
 
         server.verify(WireMock.postRequestedFor(WireMock.urlPathEqualTo("/test"))
                 .withQueryParam("q", WireMock.equalTo("1"))
@@ -164,7 +164,7 @@ class TaskExecutorTest {
         ct.setCallHTTP(ch);
         Task t = new Task();
         t.setCallTask(ct);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
 
         server.verify(WireMock.getRequestedFor(WireMock.urlPathEqualTo("/dest")));
         server.stop();
@@ -193,7 +193,7 @@ class TaskExecutorTest {
         ct.setCallHTTP(ch);
         Task t = new Task();
         t.setCallTask(ct);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
 
         server.verify(WireMock.getRequestedFor(WireMock.urlPathEqualTo("/pet/42")));
         server.stop();
@@ -239,7 +239,7 @@ class TaskExecutorTest {
         ft.setFork(fc);
         Task t = new Task();
         t.setForkTask(ft);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
         Mockito.verify(ctx, Mockito.times(2)).runAsync(Mockito.anyString(), Mockito.<TypeTag<Void>>any(), Mockito.any(), Mockito.any());
     }
 
@@ -278,7 +278,7 @@ class TaskExecutorTest {
         tt.setCatch(tc);
         Task t = new Task();
         t.setTryTask(tt);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
         Mockito.verify(ctx).set(Mockito.argThat(k -> k.name().equals("handled")), Mockito.eq("yes"));
     }
 
@@ -296,7 +296,7 @@ class TaskExecutorTest {
         st.setSet(s);
         Task t = new Task();
         t.setSetTask(st);
-        TaskExecutor.execute(ctx, t);
+        new WorkflowTaskService().execute(ctx, t);
         org.mockito.ArgumentCaptor<StateKey> k = org.mockito.ArgumentCaptor.forClass(StateKey.class);
         org.mockito.ArgumentCaptor<String> v = org.mockito.ArgumentCaptor.forClass(String.class);
         Mockito.verify(ctx).set(k.capture(), v.capture());
