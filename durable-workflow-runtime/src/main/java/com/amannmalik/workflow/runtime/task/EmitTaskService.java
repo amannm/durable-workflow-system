@@ -1,7 +1,6 @@
 package com.amannmalik.workflow.runtime.task;
 
-import dev.restate.common.Request;
-import dev.restate.common.Target;
+import com.amannmalik.workflow.runtime.Services;
 import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
@@ -9,7 +8,6 @@ import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import dev.restate.sdk.endpoint.definition.ServiceType;
 import dev.restate.serde.Serde;
-import dev.restate.serde.TypeTag;
 import dev.restate.serde.jackson.JacksonSerdeFactory;
 import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.EmitEventDefinition;
@@ -44,17 +42,17 @@ public class EmitTaskService {
         EmitTaskConfiguration emit = task.getEmit();
         EmitEventDefinition event = emit.getEvent();
         EventProperties with = event.getWith();
-        EventData data = with.getData();
-        Target target = Target.service("MyService", "myHandler");
-        Object object = data.getObject();
-        if (object instanceof String sv) {
-            ctx.send(Request.of(target, TypeTag.of(String.class), TypeTag.of(String.class), sv));
-        } else if (object instanceof Integer iv) {
-            ctx.send(Request.of(target, TypeTag.of(Integer.class), TypeTag.of(Integer.class), iv));
-        } else if (object instanceof Long lv) {
-            ctx.send(Request.of(target, TypeTag.of(Long.class), TypeTag.of(Long.class), lv));
-        } else {
-            log.warn("Unsupported event payload type: {}", object.getClass());
+        if (with == null) {
+            return;
         }
+        EventData data = with.getData();
+        String type = with.getType();
+        if (type == null) {
+            log.warn("Event type missing in emit task");
+            return;
+        }
+        Object object = data == null ? null : data.getObject();
+        String payload = (object == null) ? "" : object.toString();
+        Services.callVirtualObject(ctx, "EventBus", type, "emit", payload, Void.class).await();
     }
 }

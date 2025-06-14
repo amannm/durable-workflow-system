@@ -48,7 +48,7 @@ public class WorkflowTaskService {
             case ForkTask x -> Services.callService(ctx, "ForkTaskService", "execute", x, Void.class);
             case EmitTask x -> Services.callService(ctx, "EmitTaskService", "execute", x, Void.class);
             case ForTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
-            case ListenTask x -> log.info("Listen task not implemented: {}", x);
+            case ListenTask x -> Services.callService(ctx, "ListenTaskService", "execute", x, Void.class);
             case RaiseTask x -> logRaise(x);
             case RunTask x -> Services.callService(ctx, "RunTaskService", "execute", x, Void.class);
             case SetTask x -> Services.callService(ctx, "SetTaskService", "execute", x, Void.class);

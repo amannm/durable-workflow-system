@@ -3,6 +3,8 @@ package com.amannmalik.workflow.runtime;
 import com.amannmalik.workflow.runtime.cron.CronJob;
 import com.amannmalik.workflow.runtime.cron.CronJobInitiator;
 import com.amannmalik.workflow.runtime.cron.CronJobRequest;
+import com.amannmalik.workflow.runtime.event.EventBus;
+import com.amannmalik.workflow.runtime.task.ListenTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import dev.restate.sdk.Context;
 import dev.restate.sdk.HandlerRunner;
@@ -54,6 +56,8 @@ public class WorkflowRunner {
         var builder = Endpoint.builder()
                 .bind(WorkflowRunner.DEFINITION)
                 .bind(WorkflowTaskService.DEFINITION)
+                .bind(ListenTaskService.DEFINITION)
+                .bind(EventBus.DEFINITION)
                 .bind(CronJobInitiator.DEFINITION)
                 .bind(CronJob.DEFINITION);
         RestateHttpServer.listen(builder);
