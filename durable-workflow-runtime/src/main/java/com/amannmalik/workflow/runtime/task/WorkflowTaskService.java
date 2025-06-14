@@ -32,17 +32,16 @@ public class WorkflowTaskService {
             case CallTask x -> Services.callService(ctx, "CallTaskService", "execute", x, Void.class);
             case DoTask x ->
                     x.getDo().forEach(t -> Services.callService(ctx, "WorkflowTaskService", "execute", t.getTask(), Void.class));
-            case ForkTask x -> Services.callService(ctx, "ForkTaskervice", "execute", x, Void.class);
+            case ForkTask x -> Services.callService(ctx, "ForkTaskService", "execute", x, Void.class);
             case EmitTask x -> Services.callService(ctx, "EmitTaskService", "execute", x, Void.class);
             case ForTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
             case ListenTask x -> log.info("Listen task not implemented: {}", x);
             case RaiseTask x -> logRaise(x);
-            // TODO: don't call methods directly anywhere for any annotated restate service/virtualobject/workflow
-            case RunTask x -> runTaskService.execute(ctx, x);
-            case SetTask x -> setTaskService.execute(ctx, x);
-            case SwitchTask x -> switchTaskService.execute(ctx, x);
-            case TryTask x -> tryTaskService.execute(ctx, x);
-            case WaitTask x -> waitTaskService.execute(ctx, x);
+            case RunTask x -> Services.callService(ctx, "RunTaskService", "execute", x, Void.class);
+            case SetTask x -> Services.callService(ctx, "SetTaskService", "execute", x, Void.class);
+            case SwitchTask x -> Services.callService(ctx, "SwitchTaskService", "execute", x, Void.class);
+            case TryTask x -> Services.callService(ctx, "TryTaskService", "execute", x, Void.class);
+            case WaitTask x -> Services.callService(ctx, "WaitTaskService", "execute", x, Void.class);
             default -> throw new UnsupportedOperationException("Unexpected task: " + task.get());
         }
     }
