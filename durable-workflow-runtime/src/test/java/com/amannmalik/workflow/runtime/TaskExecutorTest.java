@@ -120,6 +120,65 @@ class TaskExecutorTest {
     }
 
     @Test
+    void executeHttpCallRedirect() throws Exception {
+        WorkflowContext ctx = Mockito.mock(WorkflowContext.class);
+        WireMockServer server = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+        server.start();
+        server.stubFor(WireMock.get(WireMock.urlPathEqualTo("/start"))
+                .willReturn(WireMock.temporaryRedirect("/dest")));
+        server.stubFor(WireMock.get(WireMock.urlPathEqualTo("/dest"))
+                .willReturn(WireMock.aResponse().withStatus(200)));
+
+        CallTask ct = new CallTask();
+        CallHTTP ch = new CallHTTP();
+        HTTPArguments args = new HTTPArguments();
+        args.setMethod("GET");
+        Endpoint ep = new Endpoint();
+        java.lang.reflect.Field fv = Endpoint.class.getDeclaredField("value");
+        fv.setAccessible(true);
+        fv.set(ep, URI.create("http://localhost:" + server.port() + "/start"));
+        args.setEndpoint(ep);
+        args.setRedirect(true);
+        ch.setWith(args);
+        ct.setCallHTTP(ch);
+        Task t = new Task();
+        t.setCallTask(ct);
+        TaskExecutor.execute(ctx, t);
+
+        server.verify(WireMock.getRequestedFor(WireMock.urlPathEqualTo("/dest")));
+        server.stop();
+    }
+
+    @Test
+    void executeHttpCallEndpointInterpolation() throws Exception {
+        WorkflowContext ctx = Mockito.mock(WorkflowContext.class);
+        Mockito.when(ctx.get(Mockito.argThat(k -> k.name().equals("petId"))))
+                .thenReturn(java.util.Optional.of("42"));
+        WireMockServer server = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+        server.start();
+        server.stubFor(WireMock.get(WireMock.urlPathEqualTo("/pet/42"))
+                .willReturn(WireMock.aResponse().withStatus(200)));
+
+        CallTask ct = new CallTask();
+        CallHTTP ch = new CallHTTP();
+        HTTPArguments args = new HTTPArguments();
+        args.setMethod("GET");
+        Endpoint ep = new Endpoint();
+        java.lang.reflect.Field fv = Endpoint.class.getDeclaredField("value");
+        fv.setAccessible(true);
+        fv.set(ep, "http://localhost:" + server.port() + "/pet/{petId}");
+        args.setEndpoint(ep);
+        ch.setWith(args);
+        ct.setCallHTTP(ch);
+        Task t = new Task();
+        t.setCallTask(ct);
+        TaskExecutor.execute(ctx, t);
+
+        server.verify(WireMock.getRequestedFor(WireMock.urlPathEqualTo("/pet/42")));
+        server.stop();
+    }
+
+    @Test
     void executeForkTask() {
         WorkflowContext ctx = Mockito.mock(WorkflowContext.class);
         dev.restate.sdk.DurableFuture<Void> df = Mockito.mock(dev.restate.sdk.DurableFuture.class);
