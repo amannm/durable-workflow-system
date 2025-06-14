@@ -5,8 +5,9 @@ import com.amannmalik.workflow.runtime.cron.CronJobInitiator;
 import com.amannmalik.workflow.runtime.cron.CronJobRequest;
 import com.amannmalik.workflow.runtime.event.EventBus;
 import com.amannmalik.workflow.runtime.task.ListenTaskService;
+import com.amannmalik.workflow.runtime.task.SwitchTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
-import dev.restate.sdk.Context;
+import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.endpoint.Endpoint;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
@@ -29,12 +30,12 @@ public class WorkflowRunner {
 
     public static final ServiceDefinition DEFINITION = ServiceDefinition.of("WorkflowRunner", ServiceType.WORKFLOW, List.of(
             HandlerDefinition.of("run", HandlerType.WORKFLOW, JacksonSerdes.of(Workflow.class), Serde.VOID, HandlerRunner.of(WorkflowRunner::run, SerdeFactory.NOOP, HandlerRunner.Options.DEFAULT)),
-            HandlerDefinition.of("runInternal", HandlerType.WORKFLOW, JacksonSerdes.of(Workflow.class), Serde.VOID, HandlerRunner.of(WorkflowRunner::run, SerdeFactory.NOOP, HandlerRunner.Options.DEFAULT))
+            HandlerDefinition.of("runInternal", HandlerType.WORKFLOW, JacksonSerdes.of(Workflow.class), Serde.VOID, HandlerRunner.of(WorkflowRunner::runInternal, SerdeFactory.NOOP, HandlerRunner.Options.DEFAULT))
     ));
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowRunner.class);
 
-    public static void run(Context ctx, Workflow input) {
+    public static void run(WorkflowContext ctx, Workflow input) {
         var schedule = input.getSchedule();
         if (schedule != null && schedule.getCron() != null) {
             CronJobRequest request = new CronJobRequest(schedule.getCron(), "WorkflowRunner", "runInternal", Optional.empty(), Optional.empty(), Optional.of(input));
@@ -44,11 +45,53 @@ public class WorkflowRunner {
         }
     }
 
-    public static void runInternal(Context ctx, Workflow input) {
+    public static void runInternal(WorkflowContext ctx, Workflow input) {
         var taskItems = input.getDo();
+        if (taskItems == null || taskItems.isEmpty()) {
+            return;
+        }
+
+        java.util.Map<String, Integer> index = new java.util.HashMap<>();
+        for (int i = 0; i < taskItems.size(); i++) {
+            index.put(taskItems.get(i).getName(), i);
+        }
+
         WorkflowTaskService wts = new WorkflowTaskService();
-        for (var ti : taskItems) {
+        int i = 0;
+        while (i < taskItems.size()) {
+            var ti = taskItems.get(i);
             wts.execute(ctx, ti.getTask());
+
+            String nextName = ctx.get(SwitchTaskService.NEXT).orElse(null);
+            if (nextName != null) {
+                ctx.clear(SwitchTaskService.NEXT);
+                if ("EXIT".equals(nextName) || "END".equals(nextName)) {
+                    break;
+                }
+                Integer ni = index.get(nextName);
+                if (ni != null) {
+                    i = ni;
+                    continue;
+                }
+            }
+
+            var base = (io.serverlessworkflow.api.types.TaskBase) ti.getTask().get();
+            var then = base.getThen();
+            if (then != null) {
+                if (then.getFlowDirectiveEnum() != null) {
+                    var fd = then.getFlowDirectiveEnum();
+                    if (fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.EXIT || fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.END) {
+                        break;
+                    }
+                } else if (then.getString() != null) {
+                    Integer ni = index.get(then.getString());
+                    if (ni != null) {
+                        i = ni;
+                        continue;
+                    }
+                }
+            }
+            i++;
         }
     }
 

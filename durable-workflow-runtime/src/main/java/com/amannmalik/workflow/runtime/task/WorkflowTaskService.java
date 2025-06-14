@@ -42,19 +42,19 @@ public class WorkflowTaskService {
 
     public static void execute(Context ctx, Task task) {
         switch (task.get()) {
-            case CallTask x -> Services.callService(ctx, "CallTaskService", "execute", x, Void.class);
+            case CallTask x -> await(Services.callService(ctx, "CallTaskService", "execute", x, Void.class));
             case DoTask x ->
-                    x.getDo().forEach(t -> Services.callService(ctx, "WorkflowTaskService", "execute", t.getTask(), Void.class));
-            case ForkTask x -> Services.callService(ctx, "ForkTaskService", "execute", x, Void.class);
-            case EmitTask x -> Services.callService(ctx, "EmitTaskService", "execute", x, Void.class);
+                    x.getDo().forEach(t -> await(Services.callService(ctx, "WorkflowTaskService", "execute", t.getTask(), Void.class)));
+            case ForkTask x -> await(Services.callService(ctx, "ForkTaskService", "execute", x, Void.class));
+            case EmitTask x -> await(Services.callService(ctx, "EmitTaskService", "execute", x, Void.class));
             case ForTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
-            case ListenTask x -> Services.callService(ctx, "ListenTaskService", "execute", x, Void.class);
+            case ListenTask x -> await(Services.callService(ctx, "ListenTaskService", "execute", x, Void.class));
             case RaiseTask x -> logRaise(x);
-            case RunTask x -> Services.callService(ctx, "RunTaskService", "execute", x, Void.class);
-            case SetTask x -> Services.callService(ctx, "SetTaskService", "execute", x, Void.class);
-            case SwitchTask x -> Services.callService(ctx, "SwitchTaskService", "execute", x, Void.class);
-            case TryTask x -> Services.callService(ctx, "TryTaskService", "execute", x, Void.class);
-            case WaitTask x -> Services.callService(ctx, "WaitTaskService", "execute", x, Void.class);
+            case RunTask x -> await(Services.callService(ctx, "RunTaskService", "execute", x, Void.class));
+            case SetTask x -> await(Services.callService(ctx, "SetTaskService", "execute", x, Void.class));
+            case SwitchTask x -> await(Services.callService(ctx, "SwitchTaskService", "execute", x, Void.class));
+            case TryTask x -> await(Services.callService(ctx, "TryTaskService", "execute", x, Void.class));
+            case WaitTask x -> await(Services.callService(ctx, "WaitTaskService", "execute", x, Void.class));
             default -> throw new UnsupportedOperationException("Unexpected task: " + task.get());
         }
     }
@@ -64,6 +64,12 @@ public class WorkflowTaskService {
             log.warn("Raise event: {}", MAPPER.writeValueAsString(x.getRaise()));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private static void await(dev.restate.sdk.CallDurableFuture<?> future) {
+        if (future != null) {
+            future.await();
         }
     }
 }

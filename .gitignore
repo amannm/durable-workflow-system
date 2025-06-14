@@ -1,0 +1,3 @@
+# Ignore Restate binaries and Maven output
+restate-*.tar.xz
+**/target/
