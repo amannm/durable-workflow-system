@@ -3,7 +3,15 @@ package com.amannmalik.workflow.runtime.task;
 import com.amannmalik.workflow.runtime.Services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.restate.sdk.WorkflowContext;
+import dev.restate.sdk.Context;
+import dev.restate.sdk.HandlerRunner;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
+import dev.restate.serde.Serde;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.CallTask;
 import io.serverlessworkflow.api.types.DoTask;
 import io.serverlessworkflow.api.types.EmitTask;
@@ -20,14 +28,19 @@ import io.serverlessworkflow.api.types.WaitTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@dev.restate.sdk.annotation.Service
+import java.lang.invoke.MethodHandles;
+import java.util.List;
+
 public class WorkflowTaskService {
+
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(MethodHandles.lookup().lookupClass().getCanonicalName(), ServiceType.SERVICE, List.of(
+            HandlerDefinition.of("execute", HandlerType.SHARED, JacksonSerdes.of(Task.class), Serde.VOID, HandlerRunner.of(WorkflowTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT))
+    ));
 
     private static final Logger log = LoggerFactory.getLogger(WorkflowTaskService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @dev.restate.sdk.annotation.Handler
-    public void execute(WorkflowContext ctx, Task task) {
+    public static void execute(Context ctx, Task task) {
         switch (task.get()) {
             case CallTask x -> Services.callService(ctx, "CallTaskService", "execute", x, Void.class);
             case DoTask x ->
@@ -46,7 +59,7 @@ public class WorkflowTaskService {
         }
     }
 
-    private void logRaise(RaiseTask x) {
+    private static void logRaise(RaiseTask x) {
         try {
             log.warn("Raise event: {}", MAPPER.writeValueAsString(x.getRaise()));
         } catch (JsonProcessingException e) {
