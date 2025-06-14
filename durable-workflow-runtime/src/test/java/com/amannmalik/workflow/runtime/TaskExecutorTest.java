@@ -3,6 +3,11 @@ package com.amannmalik.workflow.runtime;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import io.serverlessworkflow.api.types.*;
+import io.serverlessworkflow.api.types.Document;
+import io.serverlessworkflow.api.types.RunTask;
+import io.serverlessworkflow.api.types.RunTaskConfigurationUnion;
+import io.serverlessworkflow.api.types.RunWorkflow;
+import io.serverlessworkflow.api.types.SubflowConfiguration;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,6 +20,8 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.restate.serde.TypeTag;
+import com.amannmalik.workflow.runtime.WorkflowRegistry;
+import java.util.Collections;
 
 class TaskExecutorTest {
 
@@ -215,5 +222,54 @@ class TaskExecutorTest {
         Mockito.verify(ctx).set(k.capture(), v.capture());
         assertEquals("foo", k.getValue().name());
         assertEquals("bar", v.getValue());
+    }
+
+    @Test
+    void executeRunWorkflow() throws Exception {
+        WorkflowContext ctx = Mockito.mock(WorkflowContext.class);
+
+        // Define sub workflow that sets a flag
+        Workflow sub = new Workflow();
+        sub.setDocument(new Document("1.0.0", "test", "sub", "0.1.0"));
+        SetTask st = new SetTask();
+        Set set = new Set();
+        java.lang.reflect.Field fs = Set.class.getDeclaredField("string");
+        fs.setAccessible(true);
+        fs.set(set, "flag");
+        java.lang.reflect.Field fv = Set.class.getDeclaredField("value");
+        fv.setAccessible(true);
+        fv.set(set, "yes");
+        st.setSet(set);
+        Task subTask = new Task();
+        subTask.setSetTask(st);
+        sub.setDo(Collections.singletonList(new TaskItem("set", subTask)));
+
+        WorkflowRegistry.register(sub);
+
+        // Root workflow running the sub workflow
+        Workflow root = new Workflow();
+        root.setDocument(new Document("1.0.0", "test", "root", "0.1.0"));
+        RunWorkflow rw = new RunWorkflow();
+        SubflowConfiguration cfg = new SubflowConfiguration();
+        cfg.setNamespace("test");
+        cfg.setName("sub");
+        cfg.setVersion("0.1.0");
+        rw.setWorkflow(cfg);
+        RunTaskConfigurationUnion u = new RunTaskConfigurationUnion();
+        java.lang.reflect.Field fu = RunTaskConfigurationUnion.class.getDeclaredFields()[0];
+        fu.setAccessible(true);
+        fu.set(u, rw);
+        RunTask rt = new RunTask();
+        rt.setRun(u);
+        Task t = new Task();
+        t.setRunTask(rt);
+        root.setDo(Collections.singletonList(new TaskItem("run", t)));
+
+        Entrypoint ep = new Entrypoint();
+        ep.run(ctx, root);
+
+        Mockito.verify(ctx).set(Mockito.argThat(k -> k.name().equals("flag")), Mockito.eq("yes"));
+
+        WorkflowRegistry.clear();
     }
 }

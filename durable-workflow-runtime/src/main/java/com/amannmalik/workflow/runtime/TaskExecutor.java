@@ -8,6 +8,8 @@ import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.serde.TypeTag;
 import io.serverlessworkflow.api.types.*;
+import com.amannmalik.workflow.runtime.WorkflowRegistry;
+import com.amannmalik.workflow.runtime.Entrypoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,9 +185,22 @@ final class TaskExecutor {
                     }
                 }
             }
-            case RunWorkflow r -> log.info("Run workflow not implemented: {}", r);
+            case RunWorkflow r -> handleRunWorkflow(ctx, r);
             default -> throw new UnsupportedOperationException();
         }
+    }
+
+    private static void handleRunWorkflow(WorkflowContext ctx, RunWorkflow run) {
+        var cfg = run.getWorkflow();
+        if (cfg == null) {
+            return;
+        }
+        Workflow wf = WorkflowRegistry.get(cfg.getNamespace(), cfg.getName(), cfg.getVersion());
+        if (wf == null) {
+            log.warn("Sub-workflow not found: {}:{}:{}", cfg.getNamespace(), cfg.getName(), cfg.getVersion());
+            return;
+        }
+        new Entrypoint().runInternal(ctx, wf);
     }
 
     private static void handleSetTask(WorkflowContext ctx, SetTask x) {
