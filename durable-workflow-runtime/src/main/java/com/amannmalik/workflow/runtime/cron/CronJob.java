@@ -6,65 +6,99 @@ import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
 import dev.restate.common.Request;
 import dev.restate.common.Target;
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.ObjectContext;
 import dev.restate.sdk.SharedObjectContext;
-import dev.restate.sdk.annotation.Handler;
-import dev.restate.sdk.annotation.Name;
-import dev.restate.sdk.annotation.Shared;
-import dev.restate.sdk.annotation.VirtualObject;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.common.TerminalException;
+import dev.restate.serde.Serde;
 import dev.restate.serde.TypeTag;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.Workflow;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static com.cronutils.model.CronType.UNIX;
 
-@Name("CronJob")
-@VirtualObject
 public class CronJob {
 
-    private final StateKey<CronJobInfo> JOB_STATE = StateKey.of("job-state", CronJobInfo.class);
-    private final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
+            "CronJob",
+            ServiceType.VIRTUAL_OBJECT,
+            List.of(
+                    HandlerDefinition.of(
+                            "initiate",
+                            HandlerType.EXCLUSIVE,
+                            JacksonSerdes.of(CronJobRequest.class),
+                            JacksonSerdes.of(CronJobInfo.class),
+                            HandlerRunner.of(CronJob::initiate, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    ),
+                    HandlerDefinition.of(
+                            "execute",
+                            HandlerType.EXCLUSIVE,
+                            Serde.VOID,
+                            Serde.VOID,
+                            HandlerRunner.of(CronJob::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    ),
+                    HandlerDefinition.of(
+                            "cancel",
+                            HandlerType.EXCLUSIVE,
+                            Serde.VOID,
+                            Serde.VOID,
+                            HandlerRunner.of(CronJob::cancel, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    ),
+                    HandlerDefinition.of(
+                            "getInfo",
+                            HandlerType.SHARED,
+                            Serde.VOID,
+                            JacksonSerdes.of(new com.fasterxml.jackson.core.type.TypeReference<Optional<CronJobInfo>>() {}),
+                            HandlerRunner.of(CronJob::getInfo, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    )
+            )
+    );
 
-    @Handler
-    public CronJobInfo initiate(ObjectContext ctx, CronJobRequest request) {
+    private static final StateKey<CronJobInfo> JOB_STATE = StateKey.of("job-state", CronJobInfo.class);
+    private static final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
+
+    public static CronJobInfo initiate(ObjectContext ctx, CronJobRequest request) {
         if (ctx.get(JOB_STATE).isPresent()) {
             throw new TerminalException("Job already exists for this ID");
         }
         return scheduleNextExecution(ctx, request);
     }
 
-    @Handler
-    public void execute(ObjectContext ctx) {
+    public static void execute(ObjectContext ctx) {
         CronJobRequest request = ctx.get(JOB_STATE).orElseThrow(() -> new TerminalException("Job not found")).request();
 
         executeTask(ctx, request);
         scheduleNextExecution(ctx, request);
     }
 
-    @Handler
-    public void cancel(ObjectContext ctx) {
+    public static void cancel(ObjectContext ctx) {
         ctx.get(JOB_STATE).ifPresent(jobState -> ctx.invocationHandle(jobState.nextExecutionId()).cancel());
 
         // Clear the job state
         ctx.clearAll();
     }
 
-    @Shared
-    public Optional<CronJobInfo> getInfo(SharedObjectContext ctx) {
+    public static Optional<CronJobInfo> getInfo(SharedObjectContext ctx) {
         return ctx.get(JOB_STATE);
     }
 
-    private void executeTask(ObjectContext ctx, CronJobRequest job) {
+    private static void executeTask(ObjectContext ctx, CronJobRequest job) {
         Target target = (job.key().isPresent()) ? Target.virtualObject(job.service(), job.method(), job.key().get()) : Target.service(job.service(), job.method());
         var request = (job.workflow().isPresent()) ? Request.of(target, TypeTag.of(Workflow.class), TypeTag.of(Void.class), job.workflow().get()) : (job.payload().isPresent()) ? Request.of(target, TypeTag.of(String.class), TypeTag.of(Void.class), job.payload().get()) : Request.of(target, new byte[0]);
         ctx.send(request);
     }
 
-    private CronJobInfo scheduleNextExecution(ObjectContext ctx, CronJobRequest request) {
+    private static CronJobInfo scheduleNextExecution(ObjectContext ctx, CronJobRequest request) {
         // Parse cron expression
         ExecutionTime executionTime;
         try {

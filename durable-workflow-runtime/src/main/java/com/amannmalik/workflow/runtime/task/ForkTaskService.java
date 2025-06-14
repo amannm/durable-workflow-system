@@ -1,17 +1,39 @@
 package com.amannmalik.workflow.runtime.task;
 
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.DurableFuture;
 import dev.restate.sdk.common.RetryPolicy;
+import dev.restate.sdk.endpoint.definition.HandlerDefinition;
+import dev.restate.sdk.endpoint.definition.HandlerType;
+import dev.restate.sdk.endpoint.definition.ServiceDefinition;
+import dev.restate.sdk.endpoint.definition.ServiceType;
+import dev.restate.serde.Serde;
 import dev.restate.serde.TypeTag;
+import dev.restate.serde.jackson.JacksonSerdeFactory;
+import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.ForkTask;
 import io.serverlessworkflow.api.types.TaskItem;
 
-@dev.restate.sdk.annotation.Service
+import java.util.List;
+
 public class ForkTaskService {
 
-    @dev.restate.sdk.annotation.Handler
-    public void execute(WorkflowContext ctx, ForkTask task) {
+    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
+            "ForkTaskService",
+            ServiceType.SERVICE,
+            List.of(
+                    HandlerDefinition.of(
+                            "execute",
+                            HandlerType.SHARED,
+                            JacksonSerdes.of(ForkTask.class),
+                            Serde.VOID,
+                            HandlerRunner.of(ForkTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
+                    )
+            )
+    );
+
+    public static void execute(WorkflowContext ctx, ForkTask task) {
         var fork = task.getFork();
         int i = 0;
         java.util.List<DurableFuture<Void>> futures = new java.util.ArrayList<>();
