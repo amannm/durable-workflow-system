@@ -18,8 +18,7 @@ public class DurableWorkflowReconciler implements Reconciler<DurableWorkflow> {
     public UpdateControl<DurableWorkflow> reconcile(DurableWorkflow desired, Context context) {
         var client = context.getClient();
         var name = desired.getMetadata().getName();
-        var namespace =
-                java.util.Optional.ofNullable(desired.getMetadata().getNamespace())
+        var namespace = java.util.Optional.ofNullable(desired.getMetadata().getNamespace())
                         .filter(s -> !s.isBlank())
                         .orElse("default");
 

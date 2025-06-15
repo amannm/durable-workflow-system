@@ -29,8 +29,7 @@ public class WorkflowServlet extends HttpServlet {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
             mapper.registerModule(new JavaTimeModule());
             DurableWorkflow workflow = mapper.readValue(req.getInputStream(), DurableWorkflow.class);
-            String ns =
-                    java.util.Optional.ofNullable(workflow.getMetadata().getNamespace())
+            String ns = java.util.Optional.ofNullable(workflow.getMetadata().getNamespace())
                             .filter(s -> !s.isBlank())
                             .orElse("default");
             workflow.getMetadata().setNamespace(ns);

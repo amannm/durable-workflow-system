@@ -125,8 +125,7 @@ public class WorkflowRunner {
     }
 
     public static void main(String[] args) {
-        var builder =
-                Endpoint.builder()
+        var builder = Endpoint.builder()
                         .bind(WorkflowRunner.DEFINITION)
                         .bind(WorkflowTaskService.DEFINITION)
                         .bind(ListenTaskService.DEFINITION)

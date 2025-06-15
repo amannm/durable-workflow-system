@@ -37,9 +37,7 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
         }
         Object ep = with.getEndpoint().get();
         String epStr = ep instanceof URI u ? u.toString() : ep.toString();
-        epStr =
-                ExpressionResolver.resolveExpressions(ctx, epStr)
-                        .orElseThrow();
+        epStr = ExpressionResolver.resolveExpressions(ctx, epStr).orElseThrow();
         URI uri = URI.create(epStr);
 
         if (with.getQuery() != null && with.getQuery().getHTTPQuery() != null) {
@@ -98,8 +96,7 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
                     with.isRedirect()
                             ? HttpClient.newBuilder().followRedirects(Redirect.ALWAYS).build()
                             : HttpClient.newHttpClient();
-            HttpResponse<String> resp =
-                    client.send(builder.build(), BodyHandlers.ofString());
+            HttpResponse<String> resp = client.send(builder.build(), BodyHandlers.ofString());
             HTTPOutput out = with.getOutput() == null ? HTTPOutput.CONTENT : with.getOutput();
             switch (out) {
                 case RAW -> ctx.set(resultKey, resp.body());

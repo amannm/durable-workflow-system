@@ -36,8 +36,7 @@ class EntrypointTest {
   @Test
   void testSetAndWaitTasks() {
     var workflow = createTestWorkflow();
-    var builder =
-            Endpoint.builder()
+    var builder = Endpoint.builder()
                     .bind(WorkflowRunner.DEFINITION)
                     .bind(WorkflowTaskService.DEFINITION)
                     .bind(CronJobInitiator.DEFINITION)
