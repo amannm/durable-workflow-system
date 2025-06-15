@@ -50,21 +50,13 @@ public class WorkflowTaskService {
             case EmitTask x -> await(Services.callService(ctx, "EmitTaskService", "execute", x, Void.class));
             case ForTask x -> x.getDo().forEach(t -> execute(ctx, t.getTask()));
             case ListenTask x -> await(Services.callService(ctx, "ListenTaskService", "execute", x, Void.class));
-            case RaiseTask x -> logRaise(x);
+            case RaiseTask x -> await(Services.callService(ctx, "RaiseTaskService", "execute", x, Void.class));
             case RunTask x -> await(Services.callService(ctx, "RunTaskService", "execute", x, Void.class));
             case SetTask x -> await(Services.callService(ctx, "SetTaskService", "execute", x, Void.class));
             case SwitchTask x -> await(Services.callService(ctx, "SwitchTaskService", "execute", x, Void.class));
             case TryTask x -> await(Services.callService(ctx, "TryTaskService", "execute", x, Void.class));
             case WaitTask x -> await(Services.callService(ctx, "WaitTaskService", "execute", x, Void.class));
             default -> throw new UnsupportedOperationException("Unexpected task: " + task.get());
-        }
-    }
-
-    private static void logRaise(RaiseTask x) {
-        try {
-            log.warn("Raise event: {}", MAPPER.writeValueAsString(x.getRaise()));
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(e);
         }
     }
 
