@@ -1,15 +1,9 @@
 package com.amannmalik.workflow.runtime.task;
 
+import com.amannmalik.workflow.runtime.DefinitionHelper;
 import com.amannmalik.workflow.runtime.Services;
-import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
-import dev.restate.sdk.endpoint.definition.HandlerDefinition;
-import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
-import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.serde.Serde;
-import dev.restate.serde.jackson.JacksonSerdeFactory;
-import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.EmitEventDefinition;
 import io.serverlessworkflow.api.types.EmitTask;
 import io.serverlessworkflow.api.types.EmitTaskConfiguration;
@@ -22,18 +16,10 @@ import java.util.List;
 
 public class EmitTaskService {
 
-    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
-            "EmitTaskService",
-            ServiceType.SERVICE,
-            List.of(
-                    HandlerDefinition.of(
-                            "execute",
-                            HandlerType.SHARED,
-                            JacksonSerdes.of(EmitTask.class),
-                            Serde.VOID,
-                            HandlerRunner.of(EmitTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
-                    )
-            )
+    public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
+            EmitTaskService.class,
+            EmitTask.class,
+            EmitTaskService::execute
     );
 
     private static final Logger log = LoggerFactory.getLogger(EmitTaskService.class);

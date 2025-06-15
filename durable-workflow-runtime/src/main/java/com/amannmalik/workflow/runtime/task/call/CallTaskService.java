@@ -3,16 +3,10 @@ package com.amannmalik.workflow.runtime.task.call;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
-import dev.restate.sdk.endpoint.definition.HandlerDefinition;
-import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
-import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.serde.Serde;
-import dev.restate.serde.jackson.JacksonSerdeFactory;
-import dev.restate.serde.jackson.JacksonSerdes;
+import com.amannmalik.workflow.runtime.DefinitionHelper;
 import io.serverlessworkflow.api.types.CallAsyncAPI;
 import io.serverlessworkflow.api.types.CallFunction;
 import io.serverlessworkflow.api.types.CallGRPC;
@@ -37,18 +31,10 @@ import java.util.regex.Pattern;
 
 public class CallTaskService {
 
-    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
-            "CallTaskService",
-            ServiceType.SERVICE,
-            List.of(
-                    HandlerDefinition.of(
-                            "execute",
-                            HandlerType.SHARED,
-                            JacksonSerdes.of(CallTask.class),
-                            Serde.VOID,
-                            HandlerRunner.of(CallTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
-                    )
-            )
+    public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
+            CallTaskService.class,
+            CallTask.class,
+            CallTaskService::execute
     );
 
     private static final Logger log = LoggerFactory.getLogger(CallTaskService.class);
