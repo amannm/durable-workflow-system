@@ -17,6 +17,7 @@ import io.serverlessworkflow.api.types.CallAsyncAPI;
 import io.serverlessworkflow.api.types.CallFunction;
 import io.serverlessworkflow.api.types.CallGRPC;
 import io.serverlessworkflow.api.types.CallHTTP;
+import io.serverlessworkflow.api.types.HTTPArguments.HTTPOutput;
 import io.serverlessworkflow.api.types.CallOpenAPI;
 import io.serverlessworkflow.api.types.CallTask;
 import io.serverlessworkflow.api.types.HTTPArguments;
@@ -52,6 +53,7 @@ public class CallTaskService {
 
     private static final Logger log = LoggerFactory.getLogger(CallTaskService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final StateKey<Object> RESULT = StateKey.of("call-http-result", Object.class);
 
     public static void execute(WorkflowContext ctx, CallTask task) {
         switch (task.get()) {
@@ -154,8 +156,29 @@ public class CallTaskService {
         }
 
         try {
-            HttpClient client = with.isRedirect() ? HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build() : HttpClient.newHttpClient();
-            client.send(builder.build(), HttpResponse.BodyHandlers.discarding());
+            HttpClient client = with.isRedirect() ?
+                    HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build() :
+                    HttpClient.newHttpClient();
+            HttpResponse<String> resp = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            HTTPOutput out = with.getOutput() == null ? HTTPOutput.CONTENT : with.getOutput();
+            switch (out) {
+                case RAW -> ctx.set(RESULT, resp.body());
+                case CONTENT -> {
+                    try {
+                        Object obj = MAPPER.readValue(resp.body(), Object.class);
+                        ctx.set(RESULT, obj);
+                    } catch (Exception e) {
+                        ctx.set(RESULT, resp.body());
+                    }
+                }
+                case RESPONSE -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("status", resp.statusCode());
+                    map.put("headers", resp.headers().map());
+                    map.put("body", resp.body());
+                    ctx.set(RESULT, map);
+                }
+            }
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
