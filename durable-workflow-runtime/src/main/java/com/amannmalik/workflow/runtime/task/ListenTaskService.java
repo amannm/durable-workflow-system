@@ -1,15 +1,9 @@
 package com.amannmalik.workflow.runtime.task;
 
+import com.amannmalik.workflow.runtime.DefinitionHelper;
 import com.amannmalik.workflow.runtime.Services;
-import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
-import dev.restate.sdk.endpoint.definition.HandlerDefinition;
-import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
-import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.serde.Serde;
-import dev.restate.serde.jackson.JacksonSerdeFactory;
-import dev.restate.serde.jackson.JacksonSerdes;
 import io.serverlessworkflow.api.types.EventFilter;
 import io.serverlessworkflow.api.types.ListenTask;
 import io.serverlessworkflow.api.types.ListenTaskConfiguration;
@@ -25,18 +19,10 @@ import java.util.List;
  */
 public class ListenTaskService {
 
-    public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
-            "ListenTaskService",
-            ServiceType.SERVICE,
-            List.of(
-                    HandlerDefinition.of(
-                            "execute",
-                            HandlerType.SHARED,
-                            JacksonSerdes.of(ListenTask.class),
-                            Serde.VOID,
-                            HandlerRunner.of(ListenTaskService::execute, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
-                    )
-            )
+    public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
+            ListenTaskService.class,
+            ListenTask.class,
+            ListenTaskService::execute
     );
 
     private static final Logger log = LoggerFactory.getLogger(ListenTaskService.class);
