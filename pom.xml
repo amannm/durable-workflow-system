@@ -13,6 +13,37 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Dependency versions -->
+        <serverlessworkflow-api.version>7.1.0.Final</serverlessworkflow-api.version>
+        <operator-framework.version>5.1.1</operator-framework.version>
+        <restate-sdk.version>2.1.1</restate-sdk.version>
+        <jackson.version>2.17.1</jackson.version>
+        <grpc.version>1.73.0</grpc.version>
+        <annotations-api.version>6.0.53</annotations-api.version>
+        <jetty.version>12.0.9</jetty.version>
+        <junit.jupiter.version>5.13.1</junit.jupiter.version>
+        <mockito-core.version>5.18.0</mockito-core.version>
+        <kubernetes-server-mock.version>7.3.1</kubernetes-server-mock.version>
+        <wiremock-jetty12.version>3.13.1</wiremock-jetty12.version>
+        <cron-utils.version>9.2.1</cron-utils.version>
+        <protobuf-java-util.version>4.28.1</protobuf-java-util.version>
+        <asyncapi-core.version>1.0.0-RC4</asyncapi-core.version>
+        <jackson-jq.version>1.3.0</jackson-jq.version>
+        <grpc-testing.version>1.68.0</grpc-testing.version>
+        <wiremock-grpc-extension.version>0.8.1</wiremock-grpc-extension.version>
+
+        <!-- Plugin versions -->
+        <maven-clean-plugin.version>3.2.0</maven-clean-plugin.version>
+        <maven-resources-plugin.version>3.3.0</maven-resources-plugin.version>
+        <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
+        <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+        <maven-install-plugin.version>3.1.1</maven-install-plugin.version>
+        <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
+        <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
+        <maven-pmd-plugin.version>3.22.0</maven-pmd-plugin.version>
+        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+        <spotbugs-maven-plugin.version>4.7.3.4</spotbugs-maven-plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -20,104 +51,143 @@
             <dependency>
                 <groupId>io.serverlessworkflow</groupId>
                 <artifactId>serverlessworkflow-api</artifactId>
-                <version>7.1.0.Final</version>
+                <version>${serverlessworkflow-api.version}</version>
             </dependency>
             <!-- Java Operator SDK -->
             <dependency>
                 <groupId>io.javaoperatorsdk</groupId>
                 <artifactId>operator-framework</artifactId>
-                <version>5.1.1</version>
+                <version>${operator-framework.version}</version>
             </dependency>
             <!-- Restate SDK API -->
             <dependency>
                 <groupId>dev.restate</groupId>
                 <artifactId>sdk-api</artifactId>
-                <version>2.1.1</version>
+                <version>${restate-sdk.version}</version>
             </dependency>
             <dependency>
                 <groupId>dev.restate</groupId>
                 <artifactId>sdk-java-http</artifactId>
-                <version>2.1.1</version>
+                <version>${restate-sdk.version}</version>
             </dependency>
             <!-- JSON parsing -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>2.17.1</version>
+                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.dataformat</groupId>
                 <artifactId>jackson-dataformat-yaml</artifactId>
-                <version>2.17.1</version>
+                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>2.17.1</version>
+                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-netty-shaded</artifactId>
-                <version>1.73.0</version>
+                <version>${grpc.version}</version>
                 <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-protobuf</artifactId>
-                <version>1.73.0</version>
+                <version>${grpc.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-stub</artifactId>
-                <version>1.73.0</version>
+                <version>${grpc.version}</version>
             </dependency>
             <dependency> <!-- necessary for Java 9+ -->
                 <groupId>org.apache.tomcat</groupId>
                 <artifactId>annotations-api</artifactId>
-                <version>6.0.53</version>
+                <version>${annotations-api.version}</version>
                 <scope>provided</scope>
             </dependency>
             <!-- Jetty server and servlet API -->
             <dependency>
                 <groupId>org.eclipse.jetty.ee10</groupId>
                 <artifactId>jetty-ee10-servlet</artifactId>
-                <version>12.0.9</version>
+                <version>${jetty.version}</version>
             </dependency>
             <!-- Testing libraries -->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
-                <version>5.13.1</version>
+                <version>${junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
-                <version>5.13.1</version>
+                <version>${junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-params</artifactId>
-                <version>5.13.1</version>
+                <version>${junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
-                <version>5.18.0</version>
+                <version>${mockito-core.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.fabric8</groupId>
                 <artifactId>kubernetes-server-mock</artifactId>
-                <version>7.3.1</version>
+                <version>${kubernetes-server-mock.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.wiremock</groupId>
                 <artifactId>wiremock-jetty12</artifactId>
-                <version>3.13.1</version>
+                <version>${wiremock-jetty12.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <!-- Additional runtime dependencies -->
+            <dependency>
+                <groupId>com.cronutils</groupId>
+                <artifactId>cron-utils</artifactId>
+                <version>${cron-utils.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-services</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>${protobuf-java-util.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.asyncapi</groupId>
+                <artifactId>asyncapi-core</artifactId>
+                <version>${asyncapi-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.thisptr</groupId>
+                <artifactId>jackson-jq</artifactId>
+                <version>${jackson-jq.version}</version>
+            </dependency>
+            <!-- Additional test dependencies -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-testing</artifactId>
+                <version>${grpc-testing.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-grpc-extension</artifactId>
+                <version>${wiremock-grpc-extension.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -130,37 +200,37 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
-                    <version>3.2.0</version>
+                    <version>${maven-clean-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>${maven-resources-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.10.1</version>
+                    <version>${maven-compiler-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>${maven-jar-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-install-plugin</artifactId>
-                    <version>3.1.1</version>
+                    <version>${maven-install-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
-                    <version>3.1.1</version>
+                    <version>${maven-deploy-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.1.2</version>
+                    <version>${maven-surefire-plugin.version}</version>
                     <configuration>
                         <useModulePath>false</useModulePath>
                     </configuration>
@@ -168,7 +238,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-pmd-plugin</artifactId>
-                    <version>3.22.0</version>
+                    <version>${maven-pmd-plugin.version}</version>
                     <executions>
                         <execution>
                             <phase>verify</phase>
@@ -184,7 +254,7 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.12</version>
+                    <version>${jacoco-maven-plugin.version}</version>
                     <executions>
                         <execution>
                             <goals>
@@ -203,7 +273,7 @@
                 <plugin>
                     <groupId>com.github.spotbugs</groupId>
                     <artifactId>spotbugs-maven-plugin</artifactId>
-                    <version>4.7.3.4</version>
+                    <version>${spotbugs-maven-plugin.version}</version>
                     <executions>
                         <execution>
                             <phase>verify</phase>
