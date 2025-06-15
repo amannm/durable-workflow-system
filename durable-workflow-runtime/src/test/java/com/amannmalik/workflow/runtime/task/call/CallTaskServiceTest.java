@@ -6,6 +6,11 @@ import com.amannmalik.workflow.runtime.testutil.FakeWorkflowContext;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import io.serverlessworkflow.api.types.AsyncApiArguments;
+import io.serverlessworkflow.api.types.AsyncApiMessagePayload;
+import io.serverlessworkflow.api.types.AsyncApiOutboundMessage;
+import io.serverlessworkflow.api.types.AsyncApiServer;
+import io.serverlessworkflow.api.types.CallAsyncAPI;
 import dev.restate.sdk.common.StateKey;
 import io.grpc.MethodDescriptor;
 import io.grpc.MethodDescriptor.MethodType;
@@ -27,6 +32,7 @@ import io.serverlessworkflow.api.types.HTTPArguments.HTTPOutput;
 import io.serverlessworkflow.api.types.UriTemplate;
 import io.serverlessworkflow.api.types.WithGRPCArguments;
 import io.serverlessworkflow.api.types.WithGRPCService;
+import java.net.URI;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +42,8 @@ import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -181,6 +189,63 @@ class CallTaskServiceTest {
         assertEquals("Hello Codex", ((Map<?, ?>) result).get("message"));
 
         grpcServer.shutdownNow();
+    }
+
+    @Test
+    void asyncApiPublish() {
+        String doc =
+                "asyncapi: '2.6.0'\n"
+                        + "servers:\n"
+                        + "  test:\n"
+                        + "    url: "
+                        + server.url("")
+                        + "\n    protocol: http\n"
+                        + "channels:\n"
+                        + "  /publish:\n"
+                        + "    publish:\n"
+                        + "      operationId: sendMsg\n";
+        server.stubFor(
+                get(urlEqualTo("/doc.yaml"))
+                        .willReturn(
+                                aResponse()
+                                        .withHeader("Content-Type", "text/yaml")
+                                        .withBody(doc)));
+        server.stubFor(post(urlEqualTo("/publish")).willReturn(aResponse().withStatus(204)));
+
+        ExternalResource res = new ExternalResource();
+        Endpoint ep = new Endpoint();
+        EndpointConfiguration cfg = new EndpointConfiguration();
+        EndpointUri uri = new EndpointUri();
+        UriTemplate ut = new UriTemplate();
+        ut.setLiteralUri(URI.create(server.url("/doc.yaml")));
+        uri.setLiteralEndpointURI(ut);
+        cfg.setUri(uri);
+        ep.setEndpointConfiguration(cfg);
+        res.setEndpoint(ep);
+
+        AsyncApiOutboundMessage msg = new AsyncApiOutboundMessage();
+        AsyncApiMessagePayload payload = new AsyncApiMessagePayload();
+        payload.setAdditionalProperty("foo", "bar");
+        msg.setPayload(payload);
+
+        AsyncApiArguments args = new AsyncApiArguments();
+        args.setDocument(res);
+        args.setChannel("/publish");
+        args.setMessage(msg);
+        AsyncApiServer serverDef = new AsyncApiServer();
+        serverDef.setName("test");
+        args.setServer(serverDef);
+
+        CallAsyncAPI ca = new CallAsyncAPI();
+        ca.setCall("asyncapi");
+        ca.setWith(args);
+
+        CallTask task = new CallTask();
+        task.setCallAsyncAPI(ca);
+
+        CallTaskService.execute(ctx, task);
+
+        server.verify(postRequestedFor(urlEqualTo("/publish")));
     }
 
     static class FakeContext extends FakeWorkflowContext {
