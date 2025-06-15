@@ -7,8 +7,8 @@ import com.amannmalik.workflow.runtime.event.EventBus;
 import com.amannmalik.workflow.runtime.task.ListenTaskService;
 import com.amannmalik.workflow.runtime.task.SwitchTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
-import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.HandlerRunner;
+import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.Endpoint;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
 import dev.restate.sdk.endpoint.definition.HandlerType;
@@ -55,12 +55,10 @@ public class WorkflowRunner {
         for (int i = 0; i < taskItems.size(); i++) {
             index.put(taskItems.get(i).getName(), i);
         }
-
-        WorkflowTaskService wts = new WorkflowTaskService();
         int i = 0;
         while (i < taskItems.size()) {
             var ti = taskItems.get(i);
-            wts.execute(ctx, ti.getTask());
+            Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
 
             String nextName = ctx.get(SwitchTaskService.NEXT).orElse(null);
             if (nextName != null) {
