@@ -13,21 +13,17 @@ public class WaitTaskService {
             DefinitionHelper.taskService(WaitTaskService.class, WaitTask.class, WaitTaskService::execute);
 
     public static void execute(WorkflowContext ctx, WaitTask task) {
-        var wtc = task.getWait();
-        var de = wtc.getDurationExpression();
-        Duration resolvedDuration = Duration.ZERO;
-        if (de != null) {
-            resolvedDuration = Duration.parse(de);
-        } else {
-            var duri = wtc.getDurationInline();
-            resolvedDuration =
-                    resolvedDuration
-                            .plusDays(duri.getDays())
-                            .plusHours(duri.getHours())
-                            .plusMinutes(duri.getMinutes())
-                            .plusSeconds(duri.getSeconds())
-                            .plusMillis(duri.getMilliseconds());
-        }
-        ctx.sleep(resolvedDuration);
+        var w = task.getWait();
+        var dur = w.getDurationExpression();
+        var i = w.getDurationInline();
+        Duration d = (dur != null)
+                ? Duration.parse(dur)
+                : Duration.ZERO
+                        .plusDays(i.getDays())
+                        .plusHours(i.getHours())
+                        .plusMinutes(i.getMinutes())
+                        .plusSeconds(i.getSeconds())
+                        .plusMillis(i.getMilliseconds());
+        ctx.sleep(d);
     }
 }

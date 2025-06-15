@@ -8,7 +8,7 @@ import io.serverlessworkflow.api.types.Workflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class WorkflowRunHandler implements RunHandler<RunWorkflow> {
+public final class WorkflowRunHandler implements RunHandler<RunWorkflow> {
     private static final Logger log = LoggerFactory.getLogger(WorkflowRunHandler.class);
 
     @Override

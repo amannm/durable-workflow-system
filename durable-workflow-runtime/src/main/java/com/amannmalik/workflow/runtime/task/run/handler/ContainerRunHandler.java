@@ -5,7 +5,7 @@ import io.serverlessworkflow.api.types.RunContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ContainerRunHandler implements RunHandler<RunContainer> {
+public final class ContainerRunHandler implements RunHandler<RunContainer> {
     private static final Logger log = LoggerFactory.getLogger(ContainerRunHandler.class);
 
     @Override
