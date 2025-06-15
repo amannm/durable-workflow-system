@@ -27,7 +27,7 @@ class SwitchTaskServiceTest {
         SwitchTask task = new SwitchTask();
         task.setSwitch(List.of(si));
         SwitchTaskService.execute(ctx, task);
-        assertEquals("NEXT", ctx.get(SwitchTaskService.NEXT).orElse(null));
+        assertEquals("NEXT", ctx.get(SwitchTaskService.NEXT).orElseThrow());
     }
 
     @Test
@@ -47,7 +47,7 @@ class SwitchTaskServiceTest {
         SwitchTask task = new SwitchTask();
         task.setSwitch(List.of(si1, si2));
         SwitchTaskService.execute(ctx, task);
-        assertEquals("DEFAULT", ctx.get(SwitchTaskService.NEXT).orElse(null));
+        assertEquals("DEFAULT", ctx.get(SwitchTaskService.NEXT).orElseThrow());
     }
 
     static class FakeContext extends FakeWorkflowContext {

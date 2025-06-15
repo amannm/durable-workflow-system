@@ -31,7 +31,10 @@ public class EmitTaskService {
             log.warn("Event type missing in emit task");
             return;
         }
-        Object object = data == null ? null : data.getObject();
+        Object object = null;
+        if (data != null) {
+            object = data.getObject();
+        }
         String payload = (object == null) ? "" : object.toString();
         Services.callVirtualObject(ctx, "EventBus", type, "emit", payload, Void.class).await();
     }

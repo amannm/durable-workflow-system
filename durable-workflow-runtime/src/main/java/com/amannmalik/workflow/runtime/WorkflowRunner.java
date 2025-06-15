@@ -95,8 +95,9 @@ public class WorkflowRunner {
             var ti = taskItems.get(i);
             Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
 
-            String nextName = ctx.get(SwitchTaskService.NEXT).orElse(null);
-            if (nextName != null) {
+            var nextNameOpt = ctx.get(SwitchTaskService.NEXT);
+            if (nextNameOpt.isPresent()) {
+                String nextName = nextNameOpt.get();
                 ctx.clear(SwitchTaskService.NEXT);
                 if ("EXIT".equals(nextName) || "END".equals(nextName)) {
                     break;

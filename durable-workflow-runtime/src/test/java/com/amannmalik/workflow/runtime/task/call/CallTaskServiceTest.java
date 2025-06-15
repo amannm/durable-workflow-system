@@ -97,7 +97,7 @@ class CallTaskServiceTest {
             CallTask task = new CallTask();
             task.setCallHTTP(ch);
             CallTaskService.execute(ctx, task);
-            Object result = ctx.get(CallTaskService.RESULT).orElse(null);
+            Object result = ctx.get(CallTaskService.RESULT).orElseThrow();
             assertNotNull(result);
             switch (out) {
                 case RAW -> assertEquals("{\"foo\":\"bar\"}", result);
@@ -188,7 +188,7 @@ class CallTaskServiceTest {
 
         CallTaskService.execute(ctx, task);
 
-        Object result = ctx.get(CallTaskService.RESULT).orElse(null);
+        Object result = ctx.get(CallTaskService.RESULT).orElseThrow();
         assertInstanceOf(Map.class, result);
         assertEquals("Hello Codex", ((Map<?, ?>) result).get("message"));
 
@@ -297,7 +297,7 @@ class CallTaskServiceTest {
 
         CallTaskService.execute(ctx, task);
 
-        Object result = ctx.get(CallTaskService.RESULT).orElse(null);
+        Object result = ctx.get(CallTaskService.RESULT).orElseThrow();
         assertNotNull(result);
         assertTrue(result instanceof List);
 

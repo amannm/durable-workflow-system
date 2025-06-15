@@ -10,9 +10,16 @@ public class WorkflowErrorException extends RuntimeException {
     private final Error error;
 
     public WorkflowErrorException(Error error) {
-        super(
-                error != null && error.getTitle() != null ? error.getTitle().getLiteralErrorTitle() : null);
+        super(extractTitle(error));
         this.error = error;
+    }
+
+    private static String extractTitle(Error error) {
+        if (error == null) {
+            return null;
+        }
+        var title = error.getTitle();
+        return title != null ? title.getLiteralErrorTitle() : null;
     }
 
     public Error getError() {

@@ -32,8 +32,8 @@ public class TryTaskService {
             }
 
             if (e instanceof WorkflowErrorException we) {
-                if (!matches(
-                        aCatch.getErrors() == null ? null : aCatch.getErrors().getWith(), we.getError())) {
+                var errors = aCatch.getErrors() != null ? aCatch.getErrors().getWith() : null;
+                if (!matches(errors, we.getError())) {
                     throw e;
                 }
                 String var = aCatch.getAs() == null ? "error" : aCatch.getAs();
@@ -57,7 +57,10 @@ public class TryTaskService {
         }
         if (filter.getType() != null) {
             var et = err.getType();
-            String t = et == null ? null : et.getLiteralErrorType().toString();
+            String t = null;
+            if (et != null) {
+                t = et.getLiteralErrorType().toString();
+            }
             if (!filter.getType().equals(t)) {
                 return false;
             }
@@ -67,21 +70,30 @@ public class TryTaskService {
         }
         if (filter.getInstance() != null) {
             var inst = err.getInstance();
-            String i = inst == null ? null : inst.getLiteralErrorInstance();
+            String i = null;
+            if (inst != null) {
+                i = inst.getLiteralErrorInstance();
+            }
             if (!filter.getInstance().equals(i)) {
                 return false;
             }
         }
         if (filter.getTitle() != null) {
             var tt = err.getTitle();
-            String t = tt == null ? null : tt.getLiteralErrorTitle();
+            String t = null;
+            if (tt != null) {
+                t = tt.getLiteralErrorTitle();
+            }
             if (!filter.getTitle().equals(t)) {
                 return false;
             }
         }
         if (filter.getDetails() != null) {
             var dt = err.getDetail();
-            String d = dt == null ? null : dt.getLiteralErrorDetails();
+            String d = null;
+            if (dt != null) {
+                d = dt.getLiteralErrorDetails();
+            }
             return filter.getDetails().equals(d);
         }
         return true;
