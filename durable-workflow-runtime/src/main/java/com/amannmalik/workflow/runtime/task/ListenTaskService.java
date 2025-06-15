@@ -49,6 +49,9 @@ public class ListenTaskService {
             return;
         }
         // Await event from EventBus
-        Services.callVirtualObject(ctx, "EventBus", eventType, "await", null, String.class).await();
+        var future = Services.callVirtualObject(ctx, "EventBus", eventType, "await", null, String.class);
+        if (future != null) {
+            future.await();
+        }
     }
 }

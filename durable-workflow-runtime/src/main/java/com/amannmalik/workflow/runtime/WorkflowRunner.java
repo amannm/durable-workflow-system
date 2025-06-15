@@ -75,19 +75,21 @@ public class WorkflowRunner {
                 }
             }
 
-            var base = (io.serverlessworkflow.api.types.TaskBase) ti.getTask().get();
-            var then = base.getThen();
-            if (then != null) {
-                if (then.getFlowDirectiveEnum() != null) {
-                    var fd = then.getFlowDirectiveEnum();
-                    if (fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.EXIT || fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.END) {
-                        break;
-                    }
-                } else if (then.getString() != null) {
-                    Integer ni = index.get(then.getString());
-                    if (ni != null) {
-                        i = ni;
-                        continue;
+            Object baseObj = ti.getTask().get();
+            if (baseObj instanceof io.serverlessworkflow.api.types.TaskBase base) {
+                var then = base.getThen();
+                if (then != null) {
+                    if (then.getFlowDirectiveEnum() != null) {
+                        var fd = then.getFlowDirectiveEnum();
+                        if (fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.EXIT || fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.END) {
+                            break;
+                        }
+                    } else if (then.getString() != null) {
+                        Integer ni = index.get(then.getString());
+                        if (ni != null) {
+                            i = ni;
+                            continue;
+                        }
                     }
                 }
             }

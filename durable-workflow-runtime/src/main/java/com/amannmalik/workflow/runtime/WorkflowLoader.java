@@ -20,6 +20,7 @@ public final class WorkflowLoader {
     public static Workflow fromYaml(InputStream in) {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.registerModule(new JavaTimeModule());
+        mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         try {
             return mapper.readValue(in, Workflow.class);
         } catch (IOException e) {
