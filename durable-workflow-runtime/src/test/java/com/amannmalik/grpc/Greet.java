@@ -3,20 +3,26 @@
 
 package com.amannmalik.grpc;
 
-public final class Greet {
-  static final com.google.protobuf.Descriptors.Descriptor
-      internal_static_GreeterApi_HelloRequest_descriptor;
-  static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_GreeterApi_HelloRequest_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-      internal_static_GreeterApi_HelloReply_descriptor;
-  static final com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_GreeterApi_HelloReply_fieldAccessorTable;
-  private static final com.google.protobuf.Descriptors.FileDescriptor descriptor;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.FileDescriptor;
+import com.google.protobuf.ExtensionRegistry;
+import com.google.protobuf.ExtensionRegistryLite;
+import com.google.protobuf.GeneratedMessageV3.FieldAccessorTable;
 
-  static {
-    java.lang.String[] descriptorData = {
-      """
+public final class Greet {
+    static final Descriptor
+            internal_static_GreeterApi_HelloRequest_descriptor;
+    static final FieldAccessorTable
+            internal_static_GreeterApi_HelloRequest_fieldAccessorTable;
+    static final Descriptor
+            internal_static_GreeterApi_HelloReply_descriptor;
+    static final FieldAccessorTable
+            internal_static_GreeterApi_HelloReply_fieldAccessorTable;
+    private static final FileDescriptor descriptor;
+
+    static {
+        String[] descriptorData = {
+                """
 
 3durable-workflow-runtime/src/test/prot\
 o/greet.proto\022
@@ -33,37 +39,39 @@ HelloReply\022\017
 pi.HelloRequest\032\026.GreeterApi.HelloReply"\
 \000B\027
 \023com.amannmalik.grpcP\001b\006proto3"""
-    };
-    descriptor =
-        com.google.protobuf.Descriptors.FileDescriptor.internalBuildGeneratedFileFrom(
-            descriptorData, new com.google.protobuf.Descriptors.FileDescriptor[] {});
-    internal_static_GreeterApi_HelloRequest_descriptor = getDescriptor().getMessageTypes().get(0);
-    internal_static_GreeterApi_HelloRequest_fieldAccessorTable =
-        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-            internal_static_GreeterApi_HelloRequest_descriptor,
-            new java.lang.String[] {
-              "Name",
-            });
-    internal_static_GreeterApi_HelloReply_descriptor = getDescriptor().getMessageTypes().get(1);
-    internal_static_GreeterApi_HelloReply_fieldAccessorTable =
-        new com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-            internal_static_GreeterApi_HelloReply_descriptor,
-            new java.lang.String[] {
-              "Message",
-            });
-  }
+        };
+        descriptor =
+                FileDescriptor.internalBuildGeneratedFileFrom(
+                        descriptorData, new FileDescriptor[]{});
+        internal_static_GreeterApi_HelloRequest_descriptor = getDescriptor().getMessageTypes().get(0);
+        internal_static_GreeterApi_HelloRequest_fieldAccessorTable =
+                new FieldAccessorTable(
+                        internal_static_GreeterApi_HelloRequest_descriptor,
+                        new String[]{
+                                "Name",
+                        });
+        internal_static_GreeterApi_HelloReply_descriptor = getDescriptor().getMessageTypes().get(1);
+        internal_static_GreeterApi_HelloReply_fieldAccessorTable =
+                new FieldAccessorTable(
+                        internal_static_GreeterApi_HelloReply_descriptor,
+                        new String[]{
+                                "Message",
+                        });
+    }
 
-  private Greet() {}
+    private Greet() {
+    }
 
-  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistryLite registry) {}
+    public static void registerAllExtensions(ExtensionRegistryLite registry) {
+    }
 
-  public static void registerAllExtensions(com.google.protobuf.ExtensionRegistry registry) {
-    registerAllExtensions((com.google.protobuf.ExtensionRegistryLite) registry);
-  }
+    public static void registerAllExtensions(ExtensionRegistry registry) {
+        registerAllExtensions((ExtensionRegistryLite) registry);
+    }
 
-  public static com.google.protobuf.Descriptors.FileDescriptor getDescriptor() {
-    return descriptor;
-  }
+    public static FileDescriptor getDescriptor() {
+        return descriptor;
+    }
 
-  // @@protoc_insertion_point(outer_class_scope)
+    // @@protoc_insertion_point(outer_class_scope)
 }

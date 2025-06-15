@@ -8,6 +8,7 @@ import com.amannmalik.workflow.runtime.task.ListenTaskService;
 import com.amannmalik.workflow.runtime.task.SwitchTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import dev.restate.sdk.HandlerRunner;
+import dev.restate.sdk.HandlerRunner.Options;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.Endpoint;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
@@ -18,115 +19,120 @@ import dev.restate.sdk.http.vertx.RestateHttpServer;
 import dev.restate.serde.Serde;
 import dev.restate.serde.SerdeFactory;
 import dev.restate.serde.jackson.JacksonSerdes;
+import io.serverlessworkflow.api.types.FlowDirectiveEnum;
+import io.serverlessworkflow.api.types.TaskBase;
 import io.serverlessworkflow.api.types.Workflow;
-import java.util.List;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 public class WorkflowRunner {
 
-  public static final ServiceDefinition DEFINITION =
-      ServiceDefinition.of(
-          "WorkflowRunner",
-          ServiceType.WORKFLOW,
-          List.of(
-              HandlerDefinition.of(
-                  "run",
-                  HandlerType.WORKFLOW,
-                  JacksonSerdes.of(Workflow.class),
-                  Serde.VOID,
-                  HandlerRunner.of(
-                      WorkflowRunner::run, SerdeFactory.NOOP, HandlerRunner.Options.DEFAULT)),
-              HandlerDefinition.of(
-                  "runInternal",
-                  HandlerType.WORKFLOW,
-                  JacksonSerdes.of(Workflow.class),
-                  Serde.VOID,
-                  HandlerRunner.of(
-                      WorkflowRunner::runInternal,
-                      SerdeFactory.NOOP,
-                      HandlerRunner.Options.DEFAULT))));
+    public static final ServiceDefinition DEFINITION =
+            ServiceDefinition.of(
+                    "WorkflowRunner",
+                    ServiceType.WORKFLOW,
+                    List.of(
+                            HandlerDefinition.of(
+                                    "run",
+                                    HandlerType.WORKFLOW,
+                                    JacksonSerdes.of(Workflow.class),
+                                    Serde.VOID,
+                                    HandlerRunner.of(
+                                            WorkflowRunner::run, SerdeFactory.NOOP, Options.DEFAULT)),
+                            HandlerDefinition.of(
+                                    "runInternal",
+                                    HandlerType.WORKFLOW,
+                                    JacksonSerdes.of(Workflow.class),
+                                    Serde.VOID,
+                                    HandlerRunner.of(
+                                            WorkflowRunner::runInternal,
+                                            SerdeFactory.NOOP,
+                                            Options.DEFAULT))));
 
-  private static final Logger log = LoggerFactory.getLogger(WorkflowRunner.class);
+    private static final Logger log = LoggerFactory.getLogger(WorkflowRunner.class);
 
-  public static void run(WorkflowContext ctx, Workflow input) {
-    var schedule = input.getSchedule();
-    if (schedule != null && schedule.getCron() != null) {
-      CronJobRequest request =
-          new CronJobRequest(
-              schedule.getCron(),
-              "WorkflowRunner",
-              "runInternal",
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(input));
-      Services.callService(ctx, "CronJobInitiator", "create", request, String.class).await();
-    } else {
-      runInternal(ctx, input);
-    }
-  }
-
-  public static void runInternal(WorkflowContext ctx, Workflow input) {
-    var taskItems = input.getDo();
-    if (taskItems == null || taskItems.isEmpty()) {
-      return;
-    }
-
-    java.util.Map<String, Integer> index = new java.util.HashMap<>();
-    for (int i = 0; i < taskItems.size(); i++) {
-      index.put(taskItems.get(i).getName(), i);
-    }
-    int i = 0;
-    while (i < taskItems.size()) {
-      var ti = taskItems.get(i);
-      Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
-
-      String nextName = ctx.get(SwitchTaskService.NEXT).orElse(null);
-      if (nextName != null) {
-        ctx.clear(SwitchTaskService.NEXT);
-        if ("EXIT".equals(nextName) || "END".equals(nextName)) {
-          break;
+    public static void run(WorkflowContext ctx, Workflow input) {
+        var schedule = input.getSchedule();
+        if (schedule != null && schedule.getCron() != null) {
+            CronJobRequest request =
+                    new CronJobRequest(
+                            schedule.getCron(),
+                            "WorkflowRunner",
+                            "runInternal",
+                            Optional.empty(),
+                            Optional.empty(),
+                            Optional.of(input));
+            Services.callService(ctx, "CronJobInitiator", "create", request, String.class).await();
+        } else {
+            runInternal(ctx, input);
         }
-        Integer ni = index.get(nextName);
-        if (ni != null) {
-          i = ni;
-          continue;
-        }
-      }
+    }
 
-      Object baseObj = ti.getTask().get();
-      if (baseObj instanceof io.serverlessworkflow.api.types.TaskBase base) {
-        var then = base.getThen();
-        if (then != null) {
-          if (then.getFlowDirectiveEnum() != null) {
-            var fd = then.getFlowDirectiveEnum();
-            if (fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.EXIT
-                || fd == io.serverlessworkflow.api.types.FlowDirectiveEnum.END) {
-              break;
+    public static void runInternal(WorkflowContext ctx, Workflow input) {
+        var taskItems = input.getDo();
+        if (taskItems == null || taskItems.isEmpty()) {
+            return;
+        }
+
+        Map<String, Integer> index = new HashMap<>();
+        for (int i = 0; i < taskItems.size(); i++) {
+            index.put(taskItems.get(i).getName(), i);
+        }
+        int i = 0;
+        while (i < taskItems.size()) {
+            var ti = taskItems.get(i);
+            Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
+
+            String nextName = ctx.get(SwitchTaskService.NEXT).orElse(null);
+            if (nextName != null) {
+                ctx.clear(SwitchTaskService.NEXT);
+                if ("EXIT".equals(nextName) || "END".equals(nextName)) {
+                    break;
+                }
+                Integer ni = index.get(nextName);
+                if (ni != null) {
+                    i = ni;
+                    continue;
+                }
             }
-          } else if (then.getString() != null) {
-            Integer ni = index.get(then.getString());
-            if (ni != null) {
-              i = ni;
-              continue;
-            }
-          }
-        }
-      }
-      i++;
-    }
-  }
 
-  public static void main(String[] args) {
-    var builder =
-        Endpoint.builder()
-            .bind(WorkflowRunner.DEFINITION)
-            .bind(WorkflowTaskService.DEFINITION)
-            .bind(ListenTaskService.DEFINITION)
-            .bind(EventBus.DEFINITION)
-            .bind(CronJobInitiator.DEFINITION)
-            .bind(CronJob.DEFINITION);
-    RestateHttpServer.listen(builder);
-  }
+            Object baseObj = ti.getTask().get();
+            if (baseObj instanceof TaskBase base) {
+                var then = base.getThen();
+                if (then != null) {
+                    if (then.getFlowDirectiveEnum() != null) {
+                        var fd = then.getFlowDirectiveEnum();
+                        if (fd == FlowDirectiveEnum.EXIT
+                                || fd == FlowDirectiveEnum.END) {
+                            break;
+                        }
+                    } else if (then.getString() != null) {
+                        Integer ni = index.get(then.getString());
+                        if (ni != null) {
+                            i = ni;
+                            continue;
+                        }
+                    }
+                }
+            }
+            i++;
+        }
+    }
+
+    public static void main(String[] args) {
+        var builder =
+                Endpoint.builder()
+                        .bind(WorkflowRunner.DEFINITION)
+                        .bind(WorkflowTaskService.DEFINITION)
+                        .bind(ListenTaskService.DEFINITION)
+                        .bind(EventBus.DEFINITION)
+                        .bind(CronJobInitiator.DEFINITION)
+                        .bind(CronJob.DEFINITION);
+        RestateHttpServer.listen(builder);
+    }
 }

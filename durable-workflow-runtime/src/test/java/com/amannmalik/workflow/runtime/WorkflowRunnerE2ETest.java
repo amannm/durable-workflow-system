@@ -1,9 +1,5 @@
 package com.amannmalik.workflow.runtime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import com.amannmalik.workflow.runtime.cron.CronJob;
 import com.amannmalik.workflow.runtime.cron.CronJobInfo;
 import com.amannmalik.workflow.runtime.cron.CronJobRequest;
@@ -12,8 +8,12 @@ import com.amannmalik.workflow.runtime.task.WaitTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import com.amannmalik.workflow.runtime.task.run.RunTaskService;
 import com.amannmalik.workflow.runtime.testutil.FakeWorkflowContext;
+import com.amannmalik.workflow.runtime.testutil.SimpleAsyncResult;
+import com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture;
+import com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle;
 import dev.restate.common.Request;
 import dev.restate.common.Target;
+import dev.restate.common.function.ThrowingSupplier;
 import dev.restate.sdk.CallDurableFuture;
 import dev.restate.sdk.DurableFuture;
 import dev.restate.sdk.InvocationHandle;
@@ -33,13 +33,18 @@ import io.serverlessworkflow.api.types.TaskItem;
 import io.serverlessworkflow.api.types.TimeoutAfter;
 import io.serverlessworkflow.api.types.WaitTask;
 import io.serverlessworkflow.api.types.Workflow;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class WorkflowRunnerE2ETest {
 
@@ -82,7 +87,7 @@ public class WorkflowRunnerE2ETest {
   static Workflow runWorkflow() {
     WorkflowRegistry.register(subWorkflow());
     SubflowConfiguration sc =
-        new SubflowConfiguration().withNamespace("ns2").withName("sub").withVersion("v1");
+            new SubflowConfiguration().withNamespace("ns2").withName("sub").withVersion("v1");
     RunWorkflow rw = new RunWorkflow();
     rw.setWorkflow(sc);
     RunTaskConfigurationUnion union = new RunTaskConfigurationUnion();
@@ -97,44 +102,44 @@ public class WorkflowRunnerE2ETest {
 
   static Stream<Arguments> scenarios() {
     return Stream.of(
-        Arguments.of(
-            "wait",
-            (Scenario)
-                ctx -> {
-                  WorkflowRunner.runInternal(ctx, waitWorkflow());
-                  assertEquals(Duration.parse("PT1S"), ctx.sleeps.getFirst());
-                }),
-        Arguments.of(
-            "fork",
-            (Scenario)
-                ctx -> {
-                  WorkflowRunner.runInternal(ctx, forkWorkflow());
-                  assertEquals(2, ctx.sleeps.size());
-                }),
-        Arguments.of(
-            "runWorkflow",
-            (Scenario)
-                ctx -> {
-                  WorkflowRunner.runInternal(ctx, runWorkflow());
-                  assertEquals(1, ctx.sleeps.size());
-                }),
-        Arguments.of(
-            "cronJob",
-            (Scenario)
-                ctx -> {
-                  CronJobRequest req =
-                      new CronJobRequest(
-                          "* * * * *",
-                          "S",
-                          "M",
-                          Optional.empty(),
-                          Optional.empty(),
-                          Optional.empty());
-                  CronJobInfo info = CronJob.initiate(ctx, req);
-                  assertNotNull(info);
-                  CronJob.execute(ctx);
-                  assertFalse(ctx.state.isEmpty());
-                }));
+            Arguments.of(
+                    "wait",
+                    (Scenario)
+                            ctx -> {
+                              WorkflowRunner.runInternal(ctx, waitWorkflow());
+                              assertEquals(Duration.parse("PT1S"), ctx.sleeps.getFirst());
+                            }),
+            Arguments.of(
+                    "fork",
+                    (Scenario)
+                            ctx -> {
+                              WorkflowRunner.runInternal(ctx, forkWorkflow());
+                              assertEquals(2, ctx.sleeps.size());
+                            }),
+            Arguments.of(
+                    "runWorkflow",
+                    (Scenario)
+                            ctx -> {
+                              WorkflowRunner.runInternal(ctx, runWorkflow());
+                              assertEquals(1, ctx.sleeps.size());
+                            }),
+            Arguments.of(
+                    "cronJob",
+                    (Scenario)
+                            ctx -> {
+                              CronJobRequest req =
+                                      new CronJobRequest(
+                                              "* * * * *",
+                                              "S",
+                                              "M",
+                                              Optional.empty(),
+                                              Optional.empty(),
+                                              Optional.empty());
+                              CronJobInfo info = CronJob.initiate(ctx, req);
+                              assertNotNull(info);
+                              CronJob.execute(ctx);
+                              assertFalse(ctx.state.isEmpty());
+                            }));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -178,28 +183,28 @@ public class WorkflowRunnerE2ETest {
 
     @Override
     public <T, R> InvocationHandle<R> send(Request<T, R> request, Duration delay) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle<>(
-          "inv-" + (counter++));
+      return new SimpleInvocationHandle<>(
+              "inv-" + (counter++));
     }
 
     @Override
     public <R> InvocationHandle<R> invocationHandle(String id, TypeTag<R> typeTag) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle<>(id);
+      return new SimpleInvocationHandle<>(id);
     }
 
     @Override
     public DurableFuture<Void> timer(String id, Duration duration) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>(null);
+      return new SimpleDurableFuture<>(null);
     }
 
     @Override
     public <T> DurableFuture<T> runAsync(
-        String name,
-        TypeTag<T> typeTag,
-        RetryPolicy policy,
-        dev.restate.common.function.ThrowingSupplier<T> supplier) {
+            String name,
+            TypeTag<T> typeTag,
+            RetryPolicy policy,
+            ThrowingSupplier<T> supplier) {
       try {
-        return new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>(supplier.get());
+        return new SimpleDurableFuture<>(supplier.get());
       } catch (Throwable e) {
         throw new RuntimeException(e);
       }
@@ -208,14 +213,14 @@ public class WorkflowRunnerE2ETest {
     private <R> CallDurableFuture<R> completed() {
       try {
         var ctor =
-            CallDurableFuture.class.getDeclaredConstructor(
-                HandlerContext.class, AsyncResult.class, DurableFuture.class);
+                CallDurableFuture.class.getDeclaredConstructor(
+                        HandlerContext.class, AsyncResult.class, DurableFuture.class);
         ctor.setAccessible(true);
         return (CallDurableFuture<R>)
-            ctor.newInstance(
-                null,
-                new com.amannmalik.workflow.runtime.testutil.SimpleAsyncResult<>(null),
-                new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>("id"));
+                ctor.newInstance(
+                        null,
+                        new SimpleAsyncResult<>(null),
+                        new SimpleDurableFuture<>("id"));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

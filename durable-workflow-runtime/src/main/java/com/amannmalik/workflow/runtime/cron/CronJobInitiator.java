@@ -9,19 +9,19 @@ import dev.restate.sdk.endpoint.definition.ServiceType;
 
 public class CronJobInitiator {
 
-  public static final ServiceDefinition DEFINITION =
-      DefinitionHelper.singleVoidHandlerService(
-          "CronJobInitiator",
-          ServiceType.SERVICE,
-          "create",
-          HandlerType.SHARED,
-          CronJobRequest.class,
-          CronJobInitiator::create);
+    public static final ServiceDefinition DEFINITION =
+            DefinitionHelper.singleVoidHandlerService(
+                    "CronJobInitiator",
+                    ServiceType.SERVICE,
+                    "create",
+                    HandlerType.SHARED,
+                    CronJobRequest.class,
+                    CronJobInitiator::create);
 
-  public static String create(Context ctx, CronJobRequest request) {
-    var jobId = ctx.random().nextUUID().toString();
-    Services.callVirtualObject(ctx, "CronJob", jobId, "initiate", request, CronJobInfo.class)
-        .await();
-    return jobId;
-  }
+    public static String create(Context ctx, CronJobRequest request) {
+        var jobId = ctx.random().nextUUID().toString();
+        Services.callVirtualObject(ctx, "CronJob", jobId, "initiate", request, CronJobInfo.class)
+                .await();
+        return jobId;
+    }
 }

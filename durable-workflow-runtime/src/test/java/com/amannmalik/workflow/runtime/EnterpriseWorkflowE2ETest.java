@@ -1,10 +1,5 @@
 package com.amannmalik.workflow.runtime;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.any;
-import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import com.amannmalik.workflow.runtime.task.EmitTaskService;
 import com.amannmalik.workflow.runtime.task.ForkTaskService;
 import com.amannmalik.workflow.runtime.task.ListenTaskService;
@@ -16,11 +11,15 @@ import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import com.amannmalik.workflow.runtime.task.call.CallTaskService;
 import com.amannmalik.workflow.runtime.task.run.RunTaskService;
 import com.amannmalik.workflow.runtime.testutil.FakeWorkflowContext;
+import com.amannmalik.workflow.runtime.testutil.SimpleAsyncResult;
+import com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture;
+import com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.restate.common.Request;
 import dev.restate.common.Target;
+import dev.restate.common.function.ThrowingSupplier;
 import dev.restate.sdk.CallDurableFuture;
 import dev.restate.sdk.DurableFuture;
 import dev.restate.sdk.InvocationHandle;
@@ -40,14 +39,20 @@ import io.serverlessworkflow.api.types.Task;
 import io.serverlessworkflow.api.types.TryTask;
 import io.serverlessworkflow.api.types.WaitTask;
 import io.serverlessworkflow.api.types.Workflow;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.any;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class EnterpriseWorkflowE2ETest {
   private WireMockServer server;
@@ -70,7 +75,7 @@ class EnterpriseWorkflowE2ETest {
     String yaml = Files.readString(Path.of("src/test/resources/enterprise.yaml"));
     yaml = yaml.replaceAll("https?://[A-Za-z0-9\\.-]+", server.baseUrl());
     Workflow wf =
-        WorkflowLoader.fromYaml(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)));
+            WorkflowLoader.fromYaml(new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)));
     FakeContext ctx = new FakeContext();
     WorkflowRunner.runInternal(ctx, wf);
     assertNotNull(ctx);
@@ -129,28 +134,28 @@ class EnterpriseWorkflowE2ETest {
 
     @Override
     public <T, R> InvocationHandle<R> send(Request<T, R> request, Duration delay) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle<>(
-          "inv-" + (counter++));
+      return new SimpleInvocationHandle<>(
+              "inv-" + (counter++));
     }
 
     @Override
     public <R> InvocationHandle<R> invocationHandle(String id, TypeTag<R> typeTag) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleInvocationHandle<>(id);
+      return new SimpleInvocationHandle<>(id);
     }
 
     @Override
     public DurableFuture<Void> timer(String id, Duration duration) {
-      return new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>(null);
+      return new SimpleDurableFuture<>(null);
     }
 
     @Override
     public <T> DurableFuture<T> runAsync(
-        String name,
-        TypeTag<T> typeTag,
-        RetryPolicy policy,
-        dev.restate.common.function.ThrowingSupplier<T> supplier) {
+            String name,
+            TypeTag<T> typeTag,
+            RetryPolicy policy,
+            ThrowingSupplier<T> supplier) {
       try {
-        return new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>(supplier.get());
+        return new SimpleDurableFuture<>(supplier.get());
       } catch (Throwable e) {
         throw new RuntimeException(e);
       }
@@ -159,14 +164,14 @@ class EnterpriseWorkflowE2ETest {
     private <R> CallDurableFuture<R> completed() {
       try {
         var ctor =
-            CallDurableFuture.class.getDeclaredConstructor(
-                HandlerContext.class, AsyncResult.class, DurableFuture.class);
+                CallDurableFuture.class.getDeclaredConstructor(
+                        HandlerContext.class, AsyncResult.class, DurableFuture.class);
         ctor.setAccessible(true);
         return (CallDurableFuture<R>)
-            ctor.newInstance(
-                null,
-                new com.amannmalik.workflow.runtime.testutil.SimpleAsyncResult<>(null),
-                new com.amannmalik.workflow.runtime.testutil.SimpleDurableFuture<>("id"));
+                ctor.newInstance(
+                        null,
+                        new SimpleAsyncResult<>(null),
+                        new SimpleDurableFuture<>("id"));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

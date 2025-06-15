@@ -14,32 +14,33 @@ import io.serverlessworkflow.api.types.RunShell;
 import io.serverlessworkflow.api.types.RunTask;
 import io.serverlessworkflow.api.types.RunTaskConfigurationUnion;
 import io.serverlessworkflow.api.types.RunWorkflow;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 public class RunTaskService {
 
-  private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
-  public static final ServiceDefinition DEFINITION =
-      DefinitionHelper.taskService(RunTaskService.class, RunTask.class, RunTaskService::execute);
+    private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
+    public static final ServiceDefinition DEFINITION =
+            DefinitionHelper.taskService(RunTaskService.class, RunTask.class, RunTaskService::execute);
 
-  private static final Map<Class<?>, RunHandler<?>> HANDLERS =
-      Map.of(
-          RunContainer.class, new ContainerRunHandler(),
-          RunScript.class, new ScriptRunHandler(),
-          RunShell.class, new ShellRunHandler(),
-          RunWorkflow.class, new WorkflowRunHandler());
+    private static final Map<Class<?>, RunHandler<?>> HANDLERS =
+            Map.of(
+                    RunContainer.class, new ContainerRunHandler(),
+                    RunScript.class, new ScriptRunHandler(),
+                    RunShell.class, new ShellRunHandler(),
+                    RunWorkflow.class, new WorkflowRunHandler());
 
-  @SuppressWarnings("unchecked")
-  public static void execute(WorkflowContext ctx, RunTask task) {
-    RunTaskConfigurationUnion run = task.getRun();
-    Object obj = run.get();
-    RunHandler<Object> handler = (RunHandler<Object>) HANDLERS.get(obj.getClass());
-    if (handler != null) {
-      handler.handle(ctx, obj);
-    } else {
-      throw new UnsupportedOperationException();
+    @SuppressWarnings("unchecked")
+    public static void execute(WorkflowContext ctx, RunTask task) {
+        RunTaskConfigurationUnion run = task.getRun();
+        Object obj = run.get();
+        RunHandler<Object> handler = (RunHandler<Object>) HANDLERS.get(obj.getClass());
+        if (handler != null) {
+            handler.handle(ctx, obj);
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
-  }
 }

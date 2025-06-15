@@ -717,7 +717,8 @@ systems.
 
 > [!WARNING]
 > [Events](https://cloudevents.io/) consumed by an `until` clause should not be included in the task's output.
-> These [events](https://cloudevents.io/) are used solely to determine when the until condition has been met, and they do
+> These [events](https://cloudevents.io/) are used solely to determine when the until condition has been met, and they
+> do
 > not contribute to the result or data produced by the task itself
 
 ##### Examples

@@ -5,19 +5,22 @@ import com.amannmalik.workflow.runtime.cron.CronJobInitiator;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
 import dev.restate.sdk.endpoint.Endpoint;
 import io.serverlessworkflow.api.types.Document;
+import io.serverlessworkflow.api.types.DurationInline;
 import io.serverlessworkflow.api.types.Task;
 import io.serverlessworkflow.api.types.TaskItem;
+import io.serverlessworkflow.api.types.TimeoutAfter;
 import io.serverlessworkflow.api.types.WaitTask;
 import io.serverlessworkflow.api.types.Workflow;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 class EntrypointTest {
   private static Workflow createTestWorkflow() {
     WaitTask wt = new WaitTask();
-    var to = new io.serverlessworkflow.api.types.TimeoutAfter();
-    var di = new io.serverlessworkflow.api.types.DurationInline();
+    var to = new TimeoutAfter();
+    var di = new DurationInline();
     di.setSeconds(1);
     to.setDurationInline(di);
     wt.setWait(to);
@@ -27,17 +30,18 @@ class EntrypointTest {
   }
 
   @AfterEach
-  void shutdown() {}
+  void shutdown() {
+  }
 
   @Test
   void testSetAndWaitTasks() {
     var workflow = createTestWorkflow();
     var builder =
-        Endpoint.builder()
-            .bind(WorkflowRunner.DEFINITION)
-            .bind(WorkflowTaskService.DEFINITION)
-            .bind(CronJobInitiator.DEFINITION)
-            .bind(CronJob.DEFINITION);
+            Endpoint.builder()
+                    .bind(WorkflowRunner.DEFINITION)
+                    .bind(WorkflowTaskService.DEFINITION)
+                    .bind(CronJobInitiator.DEFINITION)
+                    .bind(CronJob.DEFINITION);
     var endpoint = builder.build();
     // TODO: test if it works
   }
