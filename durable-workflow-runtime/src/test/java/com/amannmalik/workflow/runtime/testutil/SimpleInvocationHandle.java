@@ -5,30 +5,30 @@ import dev.restate.sdk.DurableFuture;
 import dev.restate.sdk.InvocationHandle;
 
 public class SimpleInvocationHandle<T> implements InvocationHandle<T> {
-    private final String id;
-    public boolean cancelled = false;
+  private final String id;
+  public boolean cancelled = false;
 
-    public SimpleInvocationHandle(String id) {
-        this.id = id;
-    }
+  public SimpleInvocationHandle(String id) {
+    this.id = id;
+  }
 
-    @Override
-    public String invocationId() {
-        return id;
-    }
+  @Override
+  public String invocationId() {
+    return id;
+  }
 
-    @Override
-    public void cancel() {
-        cancelled = true;
-    }
+  @Override
+  public void cancel() {
+    cancelled = true;
+  }
 
-    @Override
-    public DurableFuture<T> attach() {
-        return new SimpleDurableFuture<>(null);
-    }
+  @Override
+  public DurableFuture<T> attach() {
+    return new SimpleDurableFuture<>(null);
+  }
 
-    @Override
-    public Output<T> getOutput() {
-        return Output.ready(null);
-    }
+  @Override
+  public Output<T> getOutput() {
+    return Output.ready(null);
+  }
 }

@@ -14,28 +14,25 @@ import org.slf4j.LoggerFactory;
 
 public class EmitTaskService {
 
-    private static final Logger log = LoggerFactory.getLogger(EmitTaskService.class);
-    public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
-            EmitTaskService.class,
-            EmitTask.class,
-            EmitTaskService::execute
-    );
+  private static final Logger log = LoggerFactory.getLogger(EmitTaskService.class);
+  public static final ServiceDefinition DEFINITION =
+      DefinitionHelper.taskService(EmitTaskService.class, EmitTask.class, EmitTaskService::execute);
 
-    public static void execute(WorkflowContext ctx, EmitTask task) {
-        EmitTaskConfiguration emit = task.getEmit();
-        EmitEventDefinition event = emit.getEvent();
-        EventProperties with = event.getWith();
-        if (with == null) {
-            return;
-        }
-        EventData data = with.getData();
-        String type = with.getType();
-        if (type == null) {
-            log.warn("Event type missing in emit task");
-            return;
-        }
-        Object object = data == null ? null : data.getObject();
-        String payload = (object == null) ? "" : object.toString();
-        Services.callVirtualObject(ctx, "EventBus", type, "emit", payload, Void.class).await();
+  public static void execute(WorkflowContext ctx, EmitTask task) {
+    EmitTaskConfiguration emit = task.getEmit();
+    EmitEventDefinition event = emit.getEvent();
+    EventProperties with = event.getWith();
+    if (with == null) {
+      return;
     }
+    EventData data = with.getData();
+    String type = with.getType();
+    if (type == null) {
+      log.warn("Event type missing in emit task");
+      return;
+    }
+    Object object = data == null ? null : data.getObject();
+    String payload = (object == null) ? "" : object.toString();
+    Services.callVirtualObject(ctx, "EventBus", type, "emit", payload, Void.class).await();
+  }
 }
