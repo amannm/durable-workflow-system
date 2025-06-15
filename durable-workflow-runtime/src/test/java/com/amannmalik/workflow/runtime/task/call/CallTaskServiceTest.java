@@ -22,6 +22,8 @@ import io.grpc.stub.ServerCalls;
 import io.serverlessworkflow.api.types.CallGRPC;
 import io.serverlessworkflow.api.types.CallHTTP;
 import io.serverlessworkflow.api.types.CallTask;
+import io.serverlessworkflow.api.types.CallOpenAPI;
+import io.serverlessworkflow.api.types.OpenAPIArguments;
 import io.serverlessworkflow.api.types.Endpoint;
 import io.serverlessworkflow.api.types.EndpointConfiguration;
 import io.serverlessworkflow.api.types.EndpointUri;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -45,6 +48,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -246,6 +250,58 @@ class CallTaskServiceTest {
         CallTaskService.execute(ctx, task);
 
         server.verify(postRequestedFor(urlEqualTo("/publish")));
+    }
+
+    @Test
+    void openApiCall() {
+        String doc =
+                "openapi: 3.0.0\n"
+                        + "servers:\n"
+                        + "  - url: "
+                        + server.url("")
+                        + "\n"
+                        + "paths:\n"
+                        + "  /pets:\n"
+                        + "    get:\n"
+                        + "      operationId: listPets\n";
+        server.stubFor(
+                get(urlEqualTo("/openapi.yaml"))
+                        .willReturn(
+                                aResponse()
+                                        .withHeader("Content-Type", "text/yaml")
+                                        .withBody(doc)));
+        server.stubFor(get(urlEqualTo("/pets"))
+                .willReturn(aResponse().withStatus(200).withBody("[{}]")));
+
+        ExternalResource res = new ExternalResource();
+        Endpoint ep = new Endpoint();
+        EndpointConfiguration cfg = new EndpointConfiguration();
+        EndpointUri uri = new EndpointUri();
+        UriTemplate ut = new UriTemplate();
+        ut.setLiteralUri(URI.create(server.url("/openapi.yaml")));
+        uri.setLiteralEndpointURI(ut);
+        cfg.setUri(uri);
+        ep.setEndpointConfiguration(cfg);
+        res.setEndpoint(ep);
+
+        OpenAPIArguments args = new OpenAPIArguments();
+        args.setDocument(res);
+        args.setOperationId("listPets");
+
+        CallOpenAPI co = new CallOpenAPI();
+        co.setCall("openapi");
+        co.setWith(args);
+
+        CallTask task = new CallTask();
+        task.setCallOpenAPI(co);
+
+        CallTaskService.execute(ctx, task);
+
+        Object result = ctx.get(CallTaskService.RESULT).orElse(null);
+        assertNotNull(result);
+        assertTrue(result instanceof List);
+
+        server.verify(getRequestedFor(urlEqualTo("/pets")));
     }
 
     static class FakeContext extends FakeWorkflowContext {
