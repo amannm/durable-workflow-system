@@ -1,0 +1,836 @@
+# yaml-language-server: $schema=../schema/workflow.yaml
+document:
+  dsl: '1.0.0'
+  namespace: business
+  name: hyperrealistic-order-with-fraud
+  version: '0.4.0'
+input:
+  from:
+    order: .order
+  schema:
+    format: json
+    document:
+      type: object
+      required: [ order ]
+      properties:
+        order:
+          type: object
+use:
+  secrets:
+    - ML_TOKEN
+    - NOTIFICATION_TOKEN
+    - SHIPPING_TOKEN
+    - ANALYTICS_TOKEN
+    - INVOICE_TOKEN
+  authentications:
+    riskApi:
+      oauth2:
+        authority: https://risk.mybank.com
+        endpoints:
+          token: /oauth/token
+        grant: client_credentials
+        client:
+          id: risk-client-id
+          secret: risk-client-secret
+    identityService:
+      bearer:
+        use: ML_TOKEN
+    notificationService:
+      bearer:
+        use: NOTIFICATION_TOKEN
+    shippingApi:
+      bearer:
+        use: SHIPPING_TOKEN
+    paymentService:
+      oauth2:
+        authority: https://api.stripe.com
+        endpoints:
+          token: /oauth/token
+        grant: client_credentials
+        client:
+          id: stripe-client-id
+          secret: stripe-client-secret
+    salesforce:
+      oauth2:
+        authority: https://login.salesforce.com
+        endpoints:
+          token: /services/oauth2/token
+        grant: client_credentials
+        client:
+          id: salesforce-client-id
+          secret: salesforce-client-secret
+    analyticsApi:
+      bearer:
+        use: ANALYTICS_TOKEN
+    loyaltyService:
+      oauth2:
+        authority: https://api.smile.io
+        endpoints:
+          token: /oauth/token
+        grant: client_credentials
+        client:
+          id: loyalty-client-id
+          secret: loyalty-client-secret
+errors:
+  itemOutOfStock:
+    type: https://ecommerce.example.com/errors/out-of-stock
+    status: 409
+    title: Item Out of Stock
+  deliveryTimeout:
+    type: https://ecommerce.example.com/errors/delivery-timeout
+    status: 504
+    title: Delivery Timeout
+  paymentDeclined:
+    type: https://ecommerce.example.com/errors/payment-declined
+    status: 402
+    title: Payment Declined
+schedule:
+  on:
+    one:
+      with:
+        type: com.ecommerce.events.order.placed.v2
+        data: ${ .orderId != null }
+do:
+  - initializeContext:
+      set:
+        order: ${ $workflow.input.order }
+        transaction: ${ $workflow.input.order.transaction }
+  - parallelFraudChecks:
+      fork:
+        branches:
+          - checkVelocity:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://velocity.mybank.com/openapi.yaml
+                operationId: checkVelocity
+                parameters:
+                  accountId: ${ $context.transaction.account.id }
+                  amount: ${ $context.transaction.amount }
+              output:
+                as: .velocityResult
+          - evaluateRiskScore:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://risk.mybank.com/openapi.yaml
+                operationId: computeScore
+                parameters:
+                  transactionId: ${ $context.transaction.id }
+                authentication:
+                  use: riskApi
+              output:
+                as: .riskScore
+          - verifyIdentity:
+              run:
+                container:
+                  image: identity-checker:latest
+                  command: verify
+                  environment:
+                    DOCUMENT: ${ $context.transaction.identityDocument }
+                  lifetime:
+                    cleanup: eventually
+                    after:
+                      minutes: 15
+              output:
+                as: .identityResult
+          - analyzeBehavior:
+              run:
+                workflow:
+                  namespace: analytics
+                  name: behavior-analysis
+                  version: '0.1.0'
+                  input:
+                    transaction: ${ $context.transaction }
+              output:
+                as: .behaviorOutput
+  - decideFraud:
+      switch:
+        - highRisk:
+            when: ${ $context.riskScore > 0.8 || $context.velocityResult.flagged || $context.identityResult.suspicious }
+            then: escalateToManualReview
+        - moderateRisk:
+            when: ${ $context.riskScore > 0.5 }
+            then: collectAdditionalData
+        - lowRisk:
+            when: ${ $context.riskScore <= 0.5 }
+            then: approveTransaction
+  - escalateToManualReview:
+      call: http
+      with:
+        method: post
+        endpoint:
+          uri: https://operations.mybank.com/manual-review
+        body:
+          transaction: ${ $context.transaction }
+      then: waitForManualDecision
+  - collectAdditionalData:
+      run:
+        container:
+          image: enrichment-cli:latest
+          command: enrich
+          environment:
+            TRANSACTION_ID: ${ $context.transaction.id }
+      then: escalateToManualReview
+  - waitForManualDecision:
+      listen:
+        to:
+          one:
+            with:
+              type: com.mybank.events.transaction.reviewed.v1
+              data: ${ .transactionId == $context.transaction.id }
+      timeout:
+        after:
+          hours: 12
+      then: finalizeDecision
+  - approveTransaction:
+      call: http
+      with:
+        method: post
+        endpoint:
+          uri: https://payments.mybank.com/approve
+        body:
+          transactionId: ${ $context.transaction.id }
+      then: parallelPreProcessing
+  - finalizeDecision:
+      switch:
+        - approved:
+            when: ${ .data.status == 'approved' }
+            then: approveTransaction
+        - rejected:
+            when: ${ .data.status == 'rejected' }
+            then: denyTransaction
+        - expired:
+            when: ${ true }
+            then: raiseManualTimeout
+  - denyTransaction:
+      call: http
+      with:
+        method: post
+        endpoint:
+          uri: https://payments.mybank.com/deny
+        body:
+          transactionId: ${ $context.transaction.id }
+      then: notifyFraudOutcome
+  - notifyFraudOutcome:
+      fork:
+        branches:
+          - sendEmail:
+              run:
+                container:
+                  image: notification-cli:latest
+                  command: email
+                  environment:
+                    TOKEN: ${ $secrets.NOTIFICATION_TOKEN }
+                    EMAIL: ${ $context.transaction.customer.email }
+                    TEMPLATE: transaction-status
+          - updateCRM:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://crm.mybank.com/openapi.yaml
+                operationId: updateTransactionStatus
+                parameters:
+                  transactionId: ${ $context.transaction.id }
+      then: recordFraudResult
+  - recordFraudResult:
+      emit:
+        event:
+          with:
+            source: https://fraud.mybank.com
+            type: com.mybank.events.transaction.processed.v1
+            data:
+              transactionId: ${ $context.transaction.id }
+              decision: ${ $context.finalDecision }
+      then: end
+  - raiseManualTimeout:
+      raise:
+        error:
+          type: https://fraud.mybank.com/errors/manual-timeout
+          status: 504
+          title: Manual Review Timeout
+      then: end
+  - parallelPreProcessing:
+      fork:
+        branches:
+          - verifyCustomerInfo:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://crm.mycorp.com/salesforce/openapi.yaml
+                operationId: validateCustomer
+                parameters:
+                  customerId: ${ $context.order.customer.id }
+                  tier: retail
+              output:
+                as: .customerInfo
+          - validateShippingAddress:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://geo.mycorp.com/maps/openapi.yaml
+                operationId: verifyAddress
+                parameters:
+                  address: ${ $context.order.shippingAddress }
+                  region: US
+              output:
+                as: .validatedAddress
+          - applyCoupons:
+              call: http
+              with:
+                method: post
+                endpoint:
+                  uri: https://storefront.mycorp.com/discounts/apply
+                headers:
+                  content-type: application/json
+                  x-shop-token: ${ $secrets.SHOP_TOKEN }
+                body:
+                  orderId: ${ $context.order.id }
+                  coupons: ${ $context.order.coupons }
+              output:
+                as: .couponResult
+          - calculateTaxes:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://taxes.mycorp.com/openapi.yaml
+                operationId: computeTaxes
+                parameters:
+                  orderId: ${ $context.order.id }
+                  items: ${ $context.order.items }
+                  state: ${ $context.order.shippingAddress.state }
+              output:
+                as: .taxes
+          - publishOrderCreated:
+              call: asyncapi
+              with:
+                document:
+                  endpoint: https://messaging.mycorp.com/asyncapi.json
+                operation: publishOrderCreated
+                protocol: kafka
+                message:
+                  key: ${ $context.order.id }
+                  payload:
+                    order: ${ $context.order }
+          - checkInventory:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://inventory.mycorp.com/openapi.json
+                operationId: checkInventory
+                parameters:
+                  ids: ${ $context.order.items[*].id }
+                  warehouse: central
+              output:
+                as: .inventory
+  - handleInventory:
+      switch:
+        - available:
+            when: ${ all($context.inventory[*].status == 'available') }
+            then: assessRisk
+        - unavailable:
+            when: ${ any($context.inventory[*].status == 'unavailable') }
+            then: startManufacturing
+  - startManufacturing:
+      call: openapi
+      with:
+        document:
+          endpoint: https://factory.mycorp.com/opcenter/openapi.yaml
+        operationId: createWorkOrder
+        parameters:
+          orderId: ${ $context.order.id }
+          items: ${ $context.order.items }
+          priority: high
+      then: waitForManufacturing
+  - waitForManufacturing:
+      listen:
+        to:
+          one:
+            with:
+              type: com.manufacturing.events.workorder.completed.v1
+              data: ${ .orderId == $context.order.id }
+      timeout:
+        after:
+          days: 2
+      then: updateInventoryAfterManufacturing
+  - updateInventoryAfterManufacturing:
+      call: openapi
+      with:
+        document:
+          endpoint: https://inventory.mycorp.com/openapi.json
+        operationId: updateStock
+        parameters:
+          ids: ${ $context.order.items[*].id }
+          source: manufacturing
+      then: assessRisk
+  - assessRisk:
+      call: openapi
+      with:
+        document:
+          endpoint: https://risk.mycorp.com/openapi.yaml
+        operationId: evaluateOrderRisk
+        parameters:
+          orderId: ${ $context.order.id }
+          threshold: 0.7
+      then: initiatePayment
+  - initiatePayment:
+      try:
+        - attemptCharge:
+            call: http
+            with:
+              method: post
+              endpoint:
+                uri: https://api.stripe.com/v1/payment_intents
+                authentication:
+                  use: paymentService
+              headers:
+                content-type: application/x-www-form-urlencoded
+                idempotency-key: ${ $context.order.id }
+              body:
+                amount: ${ $context.order.total * 100 }
+                currency: usd
+                customer: ${ $context.order.customer.stripeId }
+      catch:
+        errors:
+          with:
+            status: 402
+        do:
+          - notifyPaymentFailure:
+              run:
+                container:
+                  image: notifications-cli:1.0
+                  command: send
+                  environment:
+                    EMAIL: ${ $context.order.customer.email }
+                    TEMPLATE: payment-failed
+          - raisePaymentDeclined:
+              raise:
+                error: paymentDeclined
+      then: awaitPaymentConfirmation
+  - awaitPaymentConfirmation:
+      call: asyncapi
+      with:
+        document:
+          endpoint: https://messaging.mycorp.com/asyncapi.json
+        operation: paymentProcessed
+        protocol: kafka
+        subscription:
+          filter: ${ .orderId == $context.order.id }
+          consume:
+            amount: 1
+      then: packageItems
+  - packageItems:
+      for:
+        each: item
+        in: $context.order.items
+      do:
+        - pack:
+            run:
+              container:
+                image: packing-service:latest
+                command: ${ "pack \($item.id)" }
+                name: ${ "pack-\($item.id)-\($workflow.id)" }
+                lifetime:
+                  cleanup: eventually
+                  after:
+                    minutes: 10
+      then: verifyPackaging
+  - verifyPackaging:
+      run:
+        container:
+          image: qa-cli:latest
+          command: ${ "inspect \($context.order.id)" }
+      then: createShipment
+  - createShipment:
+      call: openapi
+      with:
+        document:
+          endpoint: https://shipping.mycorp.com/fedex/openapi.yaml
+        operationId: createShipment
+        parameters:
+          orderId: ${ $context.order.id }
+        redirect: true
+        authentication:
+          use: shippingApi
+      then: generateShippingLabel
+  - generateShippingLabel:
+      call: openapi
+      with:
+        document:
+          endpoint: https://shipping.mycorp.com/fedex/openapi.yaml
+        operationId: createLabel
+        parameters:
+          orderId: ${ $context.order.id }
+        authentication:
+          use: shippingApi
+      then: scheduleWarehouseTransfer
+  - scheduleWarehouseTransfer:
+      call: openapi
+      with:
+        document:
+          endpoint: https://shipping.mycorp.com/fedex/openapi.yaml
+        operationId: routeToWarehouse
+        parameters:
+          orderId: ${ $context.order.id }
+      then: waitForWarehousePickup
+  - waitForWarehousePickup:
+      listen:
+        to:
+          one:
+            with:
+              type: com.logistics.events.warehouse.pickedUp.v1
+              data: ${ .orderId == $context.order.id }
+      timeout:
+        after:
+          hours: 4
+      then: startShipping
+  - startShipping:
+      run:
+        workflow:
+          namespace: shipping
+          name: start-shipping
+          version: '0.1.0'
+          input:
+            order: ${ $context.order }
+      then: waitForShipping
+  - waitForShipping:
+      listen:
+        to:
+          one:
+            with:
+              type: com.shipping.events.shipped.v1
+              data: ${ .orderId == $context.order.id }
+      export:
+        as: "$context + { shipping: .data }"
+      timeout:
+        after:
+          hours: 24
+      then: notifyCustomer
+  - notifyCustomer:
+      fork:
+        branches:
+          - updateCRM:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://crm.mycorp.com/openapi.yaml
+                operationId: updateOrderStatus
+                parameters:
+                  orderId: ${ $context.order.id }
+                authentication:
+                  use: salesforce
+          - sendConfirmation:
+              run:
+                container:
+                  image: notifications-cli:1.0
+                  command: send
+                  environment:
+                    EMAIL: ${ $context.order.customer.email }
+                    TEMPLATE: shipped
+                    SUBJECT: "Your order ${$context.order.id} has shipped"
+      then: waitForDelivery
+  - waitForDelivery:
+      listen:
+        to:
+          one:
+            with:
+              type: com.shipping.events.delivered.v1
+              data: ${ .orderId == $context.order.id }
+      timeout:
+        after:
+          days: 7
+      then: updateDeliveryStatus
+  - updateDeliveryStatus:
+      call: openapi
+      with:
+        document:
+          endpoint: https://crm.mycorp.com/openapi.yaml
+        operationId: updateOrderStatus
+        parameters:
+          orderId: ${ $context.order.id }
+        authentication:
+          use: salesforce
+      then: grantLoyaltyPoints
+  - grantLoyaltyPoints:
+      call: openapi
+      with:
+        document:
+          endpoint: https://loyalty.mycorp.com/openapi.yaml
+        operationId: addPoints
+        parameters:
+          customerId: ${ $context.order.customer.id }
+          points: ${ $context.order.total }
+        authentication:
+          use: loyaltyService
+      then: finalizeCustomerExperience
+  - finalizeCustomerExperience:
+      fork:
+        branches:
+          - sendSatisfactionSurvey:
+              run:
+                container:
+                  image: marketing-cli:latest
+                  command: survey
+                  environment:
+                    EMAIL: ${ $context.order.customer.email }
+          - updateAnalytics:
+              call: http
+              with:
+                method: post
+                endpoint:
+                  uri: https://analytics.mycorp.com/v1/orders
+                  authentication:
+                    use: analyticsApi
+                body:
+                  orderId: ${ $context.order.id }
+                  total: ${ $context.order.total }
+      then: manageSupplyChain
+  - manageSupplyChain:
+      call: openapi
+      with:
+        document:
+          endpoint: https://supply.mycorp.com/openapi.yaml
+        operationId: analyzeDemand
+        parameters:
+          orderId: ${ $context.order.id }
+          forecast: monthly
+      then: checkSupplierCapacity
+  - checkSupplierCapacity:
+      call: openapi
+      with:
+        document:
+          endpoint: https://supply.mycorp.com/openapi.yaml
+        operationId: checkSuppliers
+        parameters:
+          orderId: ${ $context.order.id }
+          region: NA
+      then: adjustProductionPlan
+  - adjustProductionPlan:
+      call: openapi
+      with:
+        document:
+          endpoint: https://factory.mycorp.com/opcenter/openapi.yaml
+        operationId: updateProductionPlan
+        parameters:
+          orderId: ${ $context.order.id }
+          demand: ${ $context.order.total }
+          mode: auto
+      then: monitorReturns
+  - monitorReturns:
+      listen:
+        to:
+          one:
+            with:
+              type: com.ecommerce.events.return.initiated.v1
+              data: ${ .orderId == $context.order.id }
+      timeout:
+        after:
+          days: 30
+      then: processReturn
+  - processReturn:
+      run:
+        workflow:
+          namespace: returns
+          name: handle-return
+          version: '0.1.0'
+          input:
+            order: ${ $context.order }
+      then: refundCustomer
+  - refundCustomer:
+      call: http
+      with:
+        method: post
+        endpoint:
+          uri: https://api.stripe.com/v1/refunds
+          authentication:
+            use: paymentService
+        headers:
+          content-type: application/x-www-form-urlencoded
+        body:
+          payment_intent: ${ $context.order.paymentIntent }
+          reason: requested_by_customer
+      then: postRefundActions
+  - postRefundActions:
+      fork:
+        branches:
+          - updateCRMReturn:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://crm.mycorp.com/openapi.yaml
+                operationId: updateOrderStatus
+                parameters:
+                  orderId: ${ $context.order.id }
+                authentication:
+                  use: salesforce
+          - updateAccounting:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://api.quickbooks.com/openapi.yaml
+                operationId: recordRefund
+                parameters:
+                  orderId: ${ $context.order.id }
+          - updateStock:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://inventory.mycorp.com/openapi.json
+                operationId: restock
+                parameters:
+                  ids: ${ $context.order.items[*].id }
+          - notifySuppliers:
+              call: openapi
+              with:
+                document:
+                  endpoint: https://suppliers.mycorp.com/openapi.yaml
+                operationId: notifyReturn
+                parameters:
+                  orderId: ${ $context.order.id }
+                  items: ${ $context.order.items }
+      then: emitCompletion
+  - emitCompletion:
+      emit:
+        event:
+          with:
+            source: https://ecommerce.example.com
+            type: com.ecommerce.events.order.completed.v2
+            data:
+              orderId: ${ $context.order.id }
+      then: finalEnterpriseProcesses
+  - finalEnterpriseProcesses:
+      do:
+        - enterpriseParallel:
+            fork:
+              branches:
+                - updateERP:
+                    call: openapi
+                    with:
+                      document:
+                        endpoint: https://erp.mycorp.com/openapi.yaml
+                      operationId: updateOrder
+                      parameters:
+                        orderId: ${ $context.order.id }
+                        sync: true
+                - generateInvoice:
+                    run:
+                      container:
+                        image: invoicing-cli:latest
+                        command: ${ "generate-invoice \($context.order.id)" }
+                        environment:
+                          INVOICE_TOKEN: ${ $secrets.INVOICE_TOKEN }
+                        lifetime:
+                          cleanup: eventually
+                          after:
+                            minutes: 5
+                - notifyCompliance:
+                    call: http
+                    with:
+                      method: post
+                      endpoint:
+                        uri: https://compliance.mycorp.com/report
+                      headers:
+                        content-type: application/json
+                        x-api-key: ${ $secrets.INVOICE_TOKEN }
+                      body:
+                        orderId: ${ $context.order.id }
+                        total: ${ $context.order.total }
+                - recordAudit:
+                    run:
+                      container:
+                        image: audit-cli:latest
+                        command: record
+                        environment:
+                          ORDER: ${ $context.order.id }
+                - evaluateLoyaltyStatus:
+                    set:
+                      loyaltyStatus: "${ $context.order.total > 1000 ? 'gold' : 'standard' }"
+                - updateDataWarehouse:
+                    run:
+                      workflow:
+                        namespace: analytics
+                        name: data-warehouse-ingest
+                        version: "0.1.0"
+                        input:
+                          order: ${ $context.order }
+        - sendMarketing:
+            fork:
+              branches:
+                - sendPromoEmail:
+                    run:
+                      container:
+                        image: marketing-cli:latest
+                        command: email
+                        environment:
+                          TO: ${ $context.order.customer.email }
+                          TEMPLATE: upsell
+                - sendPromoSMS:
+                    run:
+                      container:
+                        image: marketing-cli:latest
+                        command: sms
+                        environment:
+                          PHONE: ${ $context.order.customer.phone }
+                          TEMPLATE: upsell
+                - updateAdCampaign:
+                    call: openapi
+                    with:
+                      document:
+                        endpoint: https://ads.mycorp.com/openapi.yaml
+                      operationId: recordConversion
+                      parameters:
+                        campaignId: 42
+                        orderId: ${ $context.order.id }
+                - updateCustomerSegmentation:
+                    call: openapi
+                    with:
+                      document:
+                        endpoint: https://marketing.mycorp.com/openapi.yaml
+                      operationId: updateSegment
+                      parameters:
+                        customerId: ${ $context.order.customer.id }
+                        segment: ${ $context.loyaltyStatus }
+        - orchestrateProcurement:
+            call: grpc
+            with:
+              proto:
+                endpoint: file://protos/procurement.proto
+              service:
+                name: ProcurementApi.Manager
+                host: procurement.mycorp.internal
+                port: 5021
+              method: UpdateDemand
+              arguments:
+                id: ${ $context.order.id }
+                items: ${ $context.order.items }
+        - archiveOrder:
+            run:
+              container:
+                image: tools-cli:latest
+                command: archive
+                environment:
+                  ORDER: ${ $context.order.id }
+                  STORAGE: cold
+                  RETENTION: 365
+      then: end
+  - raiseDeliveryTimeout:
+      raise:
+        error: deliveryTimeout
+      then: end
+  - raiseManufacturingTimeout:
+      raise:
+        error:
+          type: https://ecommerce.example.com/errors/manufacturing-timeout
+          status: 504
+          title: Manufacturing Timeout
+      then: end
+  - raiseShippingTimeout:
+      raise:
+        error:
+          type: https://ecommerce.example.com/errors/shipping-timeout
+          status: 504
+          title: Shipping Timeout
+      then: end
+timeout:
+  after:
+    hours: 2
