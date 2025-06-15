@@ -42,11 +42,22 @@ public class SwitchTaskService {
 
     public static void execute(WorkflowContext ctx, SwitchTask task) {
         Pattern p = Pattern.compile("\\.(\\w+)\\s*==\\s*\"([^\"]*)\"");
+        String defaultTarget = null;
         for (SwitchItem aSwitch : task.getSwitch()) {
             SwitchCase switchCase = aSwitch.getSwitchCase();
             String when = switchCase.getWhen();
             boolean match = false;
-            if (when != null) {
+            if (when == null) {
+                FlowDirective then = switchCase.getThen();
+                if (then != null) {
+                    if (then.getFlowDirectiveEnum() != null) {
+                        defaultTarget = then.getFlowDirectiveEnum().name();
+                    } else if (then.getString() != null) {
+                        defaultTarget = then.getString();
+                    }
+                }
+                continue;
+            } else {
                 Matcher m = p.matcher(when);
                 if (m.matches()) {
                     var key = m.group(1);
@@ -66,6 +77,9 @@ public class SwitchTaskService {
                 }
                 return;
             }
+        }
+        if (defaultTarget != null) {
+            ctx.set(NEXT, defaultTarget);
         }
     }
 }
