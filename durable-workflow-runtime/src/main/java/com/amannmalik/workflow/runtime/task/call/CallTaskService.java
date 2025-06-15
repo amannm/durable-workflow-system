@@ -24,6 +24,8 @@ import java.util.Map;
 public class CallTaskService {
 
     public static final StateKey<Object> RESULT = StateKey.of("call-result", Object.class);
+    public static final StateKey<Map<String, io.serverlessworkflow.api.types.Task>> FUNCTIONS =
+            StateKey.of("workflow-functions", new dev.restate.serde.TypeRef<>() {});
     private static final Logger log = LoggerFactory.getLogger(CallTaskService.class);
     private static final Map<Class<?>, CallHandler<?>> HANDLERS =
             Map.of(

@@ -7,6 +7,7 @@ import com.amannmalik.workflow.runtime.event.EventBus;
 import com.amannmalik.workflow.runtime.task.ListenTaskService;
 import com.amannmalik.workflow.runtime.task.SwitchTaskService;
 import com.amannmalik.workflow.runtime.task.WorkflowTaskService;
+import com.amannmalik.workflow.runtime.task.call.CallTaskService;
 import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.HandlerRunner.Options;
 import dev.restate.sdk.WorkflowContext;
@@ -79,6 +80,12 @@ public class WorkflowRunner {
             return;
         }
 
+        if (input.getUse() != null && input.getUse().getFunctions() != null) {
+            ctx.set(
+                    CallTaskService.FUNCTIONS,
+                    input.getUse().getFunctions().getAdditionalProperties());
+        }
+
         Map<String, Integer> index = new HashMap<>();
         for (int i = 0; i < taskItems.size(); i++) {
             index.put(taskItems.get(i).getName(), i);
@@ -122,6 +129,7 @@ public class WorkflowRunner {
             }
             i++;
         }
+        ctx.clear(CallTaskService.FUNCTIONS);
     }
 
     public static void main(String[] args) {
