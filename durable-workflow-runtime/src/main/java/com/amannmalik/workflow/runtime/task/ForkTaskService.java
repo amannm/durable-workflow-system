@@ -12,25 +12,29 @@ import io.serverlessworkflow.api.types.TaskItem;
 
 public class ForkTaskService {
 
-    public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
-            ForkTaskService.class,
-            ForkTask.class,
-            ForkTaskService::execute
-    );
+  public static final ServiceDefinition DEFINITION =
+      DefinitionHelper.taskService(ForkTaskService.class, ForkTask.class, ForkTaskService::execute);
 
-    public static void execute(WorkflowContext ctx, ForkTask task) {
-        var fork = task.getFork();
-        int i = 0;
-        java.util.List<DurableFuture<Void>> futures = new java.util.ArrayList<>();
-        for (TaskItem item : fork.getBranches()) {
-            String name = "branch-" + (i++);
-            futures.add(ctx.runAsync(name, TypeTag.of(Void.class), RetryPolicy.defaultPolicy(), () -> {
-                Services.callService(ctx, "WorkflowTaskService", "execute", item.getTask(), Void.class).await();
+  public static void execute(WorkflowContext ctx, ForkTask task) {
+    var fork = task.getFork();
+    int i = 0;
+    java.util.List<DurableFuture<Void>> futures = new java.util.ArrayList<>();
+    for (TaskItem item : fork.getBranches()) {
+      String name = "branch-" + (i++);
+      futures.add(
+          ctx.runAsync(
+              name,
+              TypeTag.of(Void.class),
+              RetryPolicy.defaultPolicy(),
+              () -> {
+                Services.callService(
+                        ctx, "WorkflowTaskService", "execute", item.getTask(), Void.class)
+                    .await();
                 return null;
-            }));
-        }
-        for (DurableFuture<Void> f : futures) {
-            f.await();
-        }
+              }));
     }
+    for (DurableFuture<Void> f : futures) {
+      f.await();
+    }
+  }
 }

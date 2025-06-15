@@ -3,22 +3,22 @@
 
 package com.amannmalik.grpc;
 
-public interface HelloRequestOrBuilder extends
-        // @@protoc_insertion_point(interface_extends:GreeterApi.HelloRequest)
-        com.google.protobuf.MessageOrBuilder {
+public interface HelloRequestOrBuilder
+    extends
+    // @@protoc_insertion_point(interface_extends:GreeterApi.HelloRequest)
+    com.google.protobuf.MessageOrBuilder {
 
-    /**
-     * <code>string name = 1;</code>
-     *
-     * @return The name.
-     */
-    java.lang.String getName();
+  /**
+   * <code>string name = 1;</code>
+   *
+   * @return The name.
+   */
+  java.lang.String getName();
 
-    /**
-     * <code>string name = 1;</code>
-     *
-     * @return The bytes for name.
-     */
-    com.google.protobuf.ByteString
-    getNameBytes();
+  /**
+   * <code>string name = 1;</code>
+   *
+   * @return The bytes for name.
+   */
+  com.google.protobuf.ByteString getNameBytes();
 }
