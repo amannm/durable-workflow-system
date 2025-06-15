@@ -4,19 +4,6 @@
 package com.amannmalik.grpc;
 
 public final class Greet {
-    private Greet() {
-    }
-
-    public static void registerAllExtensions(
-            com.google.protobuf.ExtensionRegistryLite registry) {
-    }
-
-    public static void registerAllExtensions(
-            com.google.protobuf.ExtensionRegistry registry) {
-        registerAllExtensions(
-                (com.google.protobuf.ExtensionRegistryLite) registry);
-    }
-
     static final com.google.protobuf.Descriptors.Descriptor
             internal_static_GreeterApi_HelloRequest_descriptor;
     static final
@@ -27,23 +14,28 @@ public final class Greet {
     static final
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
             internal_static_GreeterApi_HelloReply_fieldAccessorTable;
-
-    public static com.google.protobuf.Descriptors.FileDescriptor
-    getDescriptor() {
-        return descriptor;
-    }
-
-    private static com.google.protobuf.Descriptors.FileDescriptor
+    private static final com.google.protobuf.Descriptors.FileDescriptor
             descriptor;
 
     static {
         java.lang.String[] descriptorData = {
-                "\n3durable-workflow-runtime/src/test/prot" +
-                        "o/greet.proto\022\nGreeterApi\"\034\n\014HelloReques" +
-                        "t\022\014\n\004name\030\001 \001(\t\"\035\n\nHelloReply\022\017\n\007message" +
-                        "\030\001 \001(\t2I\n\007Greeter\022>\n\010SayHello\022\030.GreeterA" +
-                        "pi.HelloRequest\032\026.GreeterApi.HelloReply\"" +
-                        "\000B\027\n\023com.amannmalik.grpcP\001b\006proto3"
+                """
+
+3durable-workflow-runtime/src/test/prot\
+o/greet.proto\022
+GreeterApi"\034
+\014HelloReques\
+t\022\014
+\004name\030\001 \001(\t"\035
+
+HelloReply\022\017
+\007message\
+\030\001 \001(\t2I
+\007Greeter\022>
+\010SayHello\022\030.GreeterA\
+pi.HelloRequest\032\026.GreeterApi.HelloReply"\
+\000B\027
+\023com.amannmalik.grpcP\001b\006proto3"""
         };
         descriptor = com.google.protobuf.Descriptors.FileDescriptor
                 .internalBuildGeneratedFileFrom(descriptorData,
@@ -61,6 +53,24 @@ public final class Greet {
                 com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
                 internal_static_GreeterApi_HelloReply_descriptor,
                 new java.lang.String[]{"Message",});
+    }
+
+    private Greet() {
+    }
+
+    public static void registerAllExtensions(
+            com.google.protobuf.ExtensionRegistryLite registry) {
+    }
+
+    public static void registerAllExtensions(
+            com.google.protobuf.ExtensionRegistry registry) {
+        registerAllExtensions(
+                (com.google.protobuf.ExtensionRegistryLite) registry);
+    }
+
+    public static com.google.protobuf.Descriptors.FileDescriptor
+    getDescriptor() {
+        return descriptor;
     }
 
     // @@protoc_insertion_point(outer_class_scope)

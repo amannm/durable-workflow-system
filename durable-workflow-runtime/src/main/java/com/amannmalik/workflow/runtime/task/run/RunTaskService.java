@@ -1,9 +1,8 @@
 package com.amannmalik.workflow.runtime.task.run;
 
 import com.amannmalik.workflow.runtime.DefinitionHelper;
-import com.amannmalik.workflow.runtime.WorkflowRegistry;
-import com.amannmalik.workflow.runtime.WorkflowRunner;
 import com.amannmalik.workflow.runtime.Services;
+import com.amannmalik.workflow.runtime.WorkflowRegistry;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import io.serverlessworkflow.api.types.RunContainer;
@@ -20,13 +19,12 @@ import java.util.List;
 
 public class RunTaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
     public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
             RunTaskService.class,
             RunTask.class,
             RunTaskService::execute
     );
-
-    private static final Logger log = LoggerFactory.getLogger(RunTaskService.class);
 
     public static void execute(WorkflowContext ctx, RunTask task) {
         RunTaskConfigurationUnion run = task.getRun();

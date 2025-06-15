@@ -1,9 +1,9 @@
 package com.amannmalik.workflow.runtime.task;
 
+import com.amannmalik.workflow.runtime.DefinitionHelper;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
-import com.amannmalik.workflow.runtime.DefinitionHelper;
 import io.serverlessworkflow.api.types.SetTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

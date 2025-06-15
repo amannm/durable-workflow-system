@@ -1,14 +1,13 @@
 package com.amannmalik.workflow.runtime.event;
 
+import dev.restate.sdk.Awakeable;
 import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.ObjectContext;
+import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
 import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.sdk.common.StateKey;
-import dev.restate.sdk.DurableFuture;
-import dev.restate.sdk.Awakeable;
 import dev.restate.serde.Serde;
 import dev.restate.serde.TypeRef;
 import dev.restate.serde.TypeTag;
@@ -26,6 +25,10 @@ import java.util.List;
  */
 public class EventBus {
 
+    private static final StateKey<Deque<String>> QUEUE = StateKey.of("queue", new TypeRef<>() {
+    });
+    private static final StateKey<List<String>> WAITERS = StateKey.of("waiters", new TypeRef<>() {
+    });
     public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
             "EventBus",
             ServiceType.VIRTUAL_OBJECT,
@@ -47,15 +50,14 @@ public class EventBus {
             )
     );
 
-    private static final StateKey<Deque<String>> QUEUE = StateKey.of("queue", new TypeRef<>() {});
-    private static final StateKey<List<String>> WAITERS = StateKey.of("waiters", new TypeRef<>() {});
-
-    /** Emit an event payload to this bus. */
+    /**
+     * Emit an event payload to this bus.
+     */
     public static void emit(ObjectContext ctx, String payload) {
         Deque<String> queue = ctx.get(QUEUE).orElseGet(ArrayDeque::new);
         List<String> waiters = ctx.get(WAITERS).orElseGet(ArrayList::new);
         if (!waiters.isEmpty()) {
-            String waiterId = waiters.remove(0);
+            String waiterId = waiters.removeFirst();
             ctx.awakeableHandle(waiterId).resolve(String.class, payload);
         } else {
             queue.addLast(payload);
@@ -64,7 +66,9 @@ public class EventBus {
         ctx.set(WAITERS, waiters);
     }
 
-    /** Await the next event payload on this bus. */
+    /**
+     * Await the next event payload on this bus.
+     */
     public static String await(ObjectContext ctx) {
         Deque<String> queue = ctx.get(QUEUE).orElseGet(ArrayDeque::new);
         if (!queue.isEmpty()) {

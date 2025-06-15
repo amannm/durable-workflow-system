@@ -8,7 +8,9 @@ import io.serverlessworkflow.api.types.RaiseTask;
 import io.serverlessworkflow.api.types.RaiseTaskConfiguration;
 import io.serverlessworkflow.api.types.RaiseTaskError;
 
-/** Service executing the raise task as defined in the DSL. */
+/**
+ * Service executing the raise task as defined in the DSL.
+ */
 public class RaiseTaskService {
 
     public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(

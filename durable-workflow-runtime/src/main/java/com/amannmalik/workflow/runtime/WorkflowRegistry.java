@@ -20,7 +20,9 @@ public final class WorkflowRegistry {
         return namespace + ":" + name + ":" + version;
     }
 
-    /** Register a workflow in the registry. */
+    /**
+     * Register a workflow in the registry.
+     */
     public static void register(Workflow workflow) {
         Document doc = workflow.getDocument();
         if (doc != null) {
@@ -28,12 +30,16 @@ public final class WorkflowRegistry {
         }
     }
 
-    /** Retrieve a workflow from the registry. */
+    /**
+     * Retrieve a workflow from the registry.
+     */
     public static Workflow get(String namespace, String name, String version) {
         return REGISTRY.get(key(namespace, name, version));
     }
 
-    /** Remove all registered workflows. Used mainly for testing. */
+    /**
+     * Remove all registered workflows. Used mainly for testing.
+     */
     public static void clear() {
         REGISTRY.clear();
     }

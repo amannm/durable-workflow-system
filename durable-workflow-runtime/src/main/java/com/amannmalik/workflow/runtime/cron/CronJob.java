@@ -9,12 +9,12 @@ import dev.restate.common.Target;
 import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.ObjectContext;
 import dev.restate.sdk.SharedObjectContext;
+import dev.restate.sdk.common.StateKey;
+import dev.restate.sdk.common.TerminalException;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
 import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.sdk.common.StateKey;
-import dev.restate.sdk.common.TerminalException;
 import dev.restate.serde.Serde;
 import dev.restate.serde.TypeTag;
 import dev.restate.serde.jackson.JacksonSerdeFactory;
@@ -29,6 +29,8 @@ import static com.cronutils.model.CronType.UNIX;
 
 public class CronJob {
 
+    private static final StateKey<CronJobInfo> JOB_STATE = StateKey.of("job-state", CronJobInfo.class);
+    private static final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
     public static final ServiceDefinition DEFINITION = ServiceDefinition.of(
             "CronJob",
             ServiceType.VIRTUAL_OBJECT,
@@ -58,14 +60,12 @@ public class CronJob {
                             "getInfo",
                             HandlerType.SHARED,
                             Serde.VOID,
-                            JacksonSerdes.of(new com.fasterxml.jackson.core.type.TypeReference<Optional<CronJobInfo>>() {}),
+                            JacksonSerdes.of(new com.fasterxml.jackson.core.type.TypeReference<>() {
+                            }),
                             HandlerRunner.of(CronJob::getInfo, JacksonSerdeFactory.DEFAULT, HandlerRunner.Options.DEFAULT)
                     )
             )
     );
-
-    private static final StateKey<CronJobInfo> JOB_STATE = StateKey.of("job-state", CronJobInfo.class);
-    private static final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
 
     public static CronJobInfo initiate(ObjectContext ctx, CronJobRequest request) {
         if (ctx.get(JOB_STATE).isPresent()) {

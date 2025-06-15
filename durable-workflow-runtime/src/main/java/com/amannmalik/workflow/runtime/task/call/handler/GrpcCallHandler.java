@@ -18,6 +18,42 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
         this.resultKey = resultKey;
     }
 
+    private static Object convertValue(com.google.protobuf.Descriptors.FieldDescriptor fd, Object value) {
+        if (value == null) {
+            return null;
+        }
+        return switch (fd.getJavaType()) {
+            case INT -> ((Number) value).intValue();
+            case LONG -> ((Number) value).longValue();
+            case FLOAT -> ((Number) value).floatValue();
+            case DOUBLE -> ((Number) value).doubleValue();
+            case BOOLEAN -> (value instanceof Boolean b) ? b : Boolean.parseBoolean(value.toString());
+            default -> value.toString();
+        };
+    }
+
+    private static com.google.protobuf.Descriptors.FileDescriptor buildFileDescriptor(
+            com.google.protobuf.DescriptorProtos.FileDescriptorProto proto,
+            java.util.Map<String, com.google.protobuf.DescriptorProtos.FileDescriptorProto> protos,
+            java.util.Map<String, com.google.protobuf.Descriptors.FileDescriptor> descs)
+            throws java.lang.Exception {
+        if (descs.containsKey(proto.getName())) {
+            return descs.get(proto.getName());
+        }
+        java.util.List<com.google.protobuf.Descriptors.FileDescriptor> deps = new java.util.ArrayList<>();
+        for (String depName : proto.getDependencyList()) {
+            var depProto = protos.get(depName);
+            if (depProto != null) {
+                deps.add(buildFileDescriptor(depProto, protos, descs));
+            }
+        }
+        com.google.protobuf.Descriptors.FileDescriptor fd =
+                com.google.protobuf.Descriptors.FileDescriptor.buildFrom(proto,
+                        deps.toArray(new com.google.protobuf.Descriptors.FileDescriptor[0]));
+        descs.put(proto.getName(), fd);
+        return fd;
+    }
+
     @Override
     public void handle(WorkflowContext ctx, CallGRPC t) {
         var with = t.getWith();
@@ -141,42 +177,5 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private static Object convertValue(com.google.protobuf.Descriptors.FieldDescriptor fd, Object value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (fd.getJavaType()) {
-            case STRING -> value.toString();
-            case INT -> ((Number) value).intValue();
-            case LONG -> ((Number) value).longValue();
-            case FLOAT -> ((Number) value).floatValue();
-            case DOUBLE -> ((Number) value).doubleValue();
-            case BOOLEAN -> (value instanceof Boolean b) ? b : Boolean.parseBoolean(value.toString());
-            default -> value.toString();
-        };
-    }
-
-    private static com.google.protobuf.Descriptors.FileDescriptor buildFileDescriptor(
-            com.google.protobuf.DescriptorProtos.FileDescriptorProto proto,
-            java.util.Map<String, com.google.protobuf.DescriptorProtos.FileDescriptorProto> protos,
-            java.util.Map<String, com.google.protobuf.Descriptors.FileDescriptor> descs)
-            throws java.lang.Exception {
-        if (descs.containsKey(proto.getName())) {
-            return descs.get(proto.getName());
-        }
-        java.util.List<com.google.protobuf.Descriptors.FileDescriptor> deps = new java.util.ArrayList<>();
-        for (String depName : proto.getDependencyList()) {
-            var depProto = protos.get(depName);
-            if (depProto != null) {
-                deps.add(buildFileDescriptor(depProto, protos, descs));
-            }
-        }
-        com.google.protobuf.Descriptors.FileDescriptor fd =
-                com.google.protobuf.Descriptors.FileDescriptor.buildFrom(proto,
-                        deps.toArray(new com.google.protobuf.Descriptors.FileDescriptor[0]));
-        descs.put(proto.getName(), fd);
-        return fd;
     }
 }

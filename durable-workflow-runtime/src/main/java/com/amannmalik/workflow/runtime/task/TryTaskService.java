@@ -1,19 +1,15 @@
 package com.amannmalik.workflow.runtime.task;
 
+import com.amannmalik.workflow.runtime.DefinitionHelper;
+import com.amannmalik.workflow.runtime.Services;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
-import com.amannmalik.workflow.runtime.DefinitionHelper;
-import com.amannmalik.workflow.runtime.Services;
+import io.serverlessworkflow.api.types.Error;
+import io.serverlessworkflow.api.types.ErrorFilter;
 import io.serverlessworkflow.api.types.TaskItem;
 import io.serverlessworkflow.api.types.TryTask;
 import io.serverlessworkflow.api.types.TryTaskCatch;
-import io.serverlessworkflow.api.types.ErrorFilter;
-import io.serverlessworkflow.api.types.Error;
-
-import com.amannmalik.workflow.runtime.task.WorkflowErrorException;
-
-import java.util.List;
 
 public class TryTaskService {
 
@@ -84,9 +80,7 @@ public class TryTaskService {
         if (filter.getDetails() != null) {
             var dt = err.getDetail();
             String d = dt == null ? null : dt.getLiteralErrorDetails();
-            if (!filter.getDetails().equals(d)) {
-                return false;
-            }
+            return filter.getDetails().equals(d);
         }
         return true;
     }

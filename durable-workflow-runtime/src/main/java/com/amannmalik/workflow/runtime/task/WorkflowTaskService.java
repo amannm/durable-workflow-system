@@ -2,12 +2,11 @@ package com.amannmalik.workflow.runtime.task;
 
 import com.amannmalik.workflow.runtime.DefinitionHelper;
 import com.amannmalik.workflow.runtime.Services;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.restate.sdk.Context;
+import dev.restate.sdk.endpoint.definition.HandlerType;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import dev.restate.sdk.endpoint.definition.ServiceType;
-import dev.restate.sdk.endpoint.definition.HandlerType;
 import io.serverlessworkflow.api.types.CallTask;
 import io.serverlessworkflow.api.types.DoTask;
 import io.serverlessworkflow.api.types.EmitTask;
@@ -25,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
-import java.util.List;
 
 public class WorkflowTaskService {
 

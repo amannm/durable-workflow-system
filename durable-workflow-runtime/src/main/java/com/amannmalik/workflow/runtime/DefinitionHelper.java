@@ -1,8 +1,8 @@
 package com.amannmalik.workflow.runtime;
 
 import dev.restate.common.function.ThrowingBiConsumer;
-import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.Context;
+import dev.restate.sdk.HandlerRunner;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.definition.HandlerDefinition;
 import dev.restate.sdk.endpoint.definition.HandlerType;
@@ -14,7 +14,9 @@ import dev.restate.serde.jackson.JacksonSerdes;
 
 import java.util.List;
 
-/** Utility helpers for building {@link ServiceDefinition} constants. */
+/**
+ * Utility helpers for building {@link ServiceDefinition} constants.
+ */
 public final class DefinitionHelper {
 
     private DefinitionHelper() {
@@ -57,7 +59,9 @@ public final class DefinitionHelper {
         );
     }
 
-    /** Variant allowing a custom service name. */
+    /**
+     * Variant allowing a custom service name.
+     */
     public static <CTX extends Context, REQ> ServiceDefinition singleVoidHandlerService(
             String serviceName,
             ServiceType serviceType,

@@ -32,7 +32,7 @@ class ExpressionResolver {
 
     private static String substitute(WorkflowContext ctx, String value, Pattern pattern) {
         Matcher m = pattern.matcher(value);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while (m.find()) {
             String expr = m.group(1).trim();
             String replacement = evaluateJq(ctx, expr);
@@ -63,7 +63,7 @@ class ExpressionResolver {
             if (out.isEmpty()) {
                 return "";
             }
-            com.fasterxml.jackson.databind.JsonNode r = out.get(out.size() - 1);
+            com.fasterxml.jackson.databind.JsonNode r = out.getLast();
             return r.isTextual() ? r.asText() : r.toString();
         } catch (Exception e) {
             log.error("Failed to evaluate expression: {}", expr, e);

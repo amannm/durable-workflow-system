@@ -16,10 +16,21 @@ import java.util.List;
 
 
 class EntrypointTest {
+    private static Workflow createTestWorkflow() {
+        WaitTask wt = new WaitTask();
+        var to = new io.serverlessworkflow.api.types.TimeoutAfter();
+        var di = new io.serverlessworkflow.api.types.DurationInline();
+        di.setSeconds(1);
+        to.setDurationInline(di);
+        wt.setWait(to);
+        Task task = new Task();
+        task.setWaitTask(wt);
+        return new Workflow(new Document(), List.of(new TaskItem("w", task)));
+    }
+
     @AfterEach
     void shutdown() {
     }
-
 
     @Test
     void testSetAndWaitTasks() {
@@ -31,17 +42,5 @@ class EntrypointTest {
                 .bind(CronJob.DEFINITION);
         var endpoint = builder.build();
         // TODO: test if it works
-    }
-
-    private static Workflow createTestWorkflow() {
-        WaitTask wt = new WaitTask();
-        var to = new io.serverlessworkflow.api.types.TimeoutAfter();
-        var di = new io.serverlessworkflow.api.types.DurationInline();
-        di.setSeconds(1);
-        to.setDurationInline(di);
-        wt.setWait(to);
-        Task task = new Task();
-        task.setWaitTask(wt);
-        return new Workflow(new Document(), List.of(new TaskItem("w", task)));
     }
 }

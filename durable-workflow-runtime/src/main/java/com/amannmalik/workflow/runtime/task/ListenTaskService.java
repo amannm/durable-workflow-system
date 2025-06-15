@@ -12,20 +12,17 @@ import io.serverlessworkflow.api.types.OneEventConsumptionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 /**
  * Listen task waits for an event of a given type using the EventBus service.
  */
 public class ListenTaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(ListenTaskService.class);
     public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
             ListenTaskService.class,
             ListenTask.class,
             ListenTaskService::execute
     );
-
-    private static final Logger log = LoggerFactory.getLogger(ListenTaskService.class);
 
     public static void execute(WorkflowContext ctx, ListenTask task) {
         ListenTaskConfiguration cfg = task.getListen();

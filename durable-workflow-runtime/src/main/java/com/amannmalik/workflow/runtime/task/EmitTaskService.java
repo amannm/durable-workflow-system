@@ -12,17 +12,14 @@ import io.serverlessworkflow.api.types.EventProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 public class EmitTaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmitTaskService.class);
     public static final ServiceDefinition DEFINITION = DefinitionHelper.taskService(
             EmitTaskService.class,
             EmitTask.class,
             EmitTaskService::execute
     );
-
-    private static final Logger log = LoggerFactory.getLogger(EmitTaskService.class);
 
     public static void execute(WorkflowContext ctx, EmitTask task) {
         EmitTaskConfiguration emit = task.getEmit();
