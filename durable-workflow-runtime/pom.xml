@@ -124,6 +124,12 @@
             <version>3.13.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-grpc-extension</artifactId>
+            <version>0.8.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
