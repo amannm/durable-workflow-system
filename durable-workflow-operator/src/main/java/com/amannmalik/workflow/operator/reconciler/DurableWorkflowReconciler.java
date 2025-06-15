@@ -18,10 +18,10 @@ public class DurableWorkflowReconciler implements Reconciler<DurableWorkflow> {
     public UpdateControl<DurableWorkflow> reconcile(DurableWorkflow desired, Context context) {
         var client = context.getClient();
         var name = desired.getMetadata().getName();
-        var namespace = desired.getMetadata().getNamespace();
-        if (namespace == null || namespace.isBlank()) {
-            namespace = "default";
-        }
+        var namespace =
+                java.util.Optional.ofNullable(desired.getMetadata().getNamespace())
+                        .filter(s -> !s.isBlank())
+                        .orElse("default");
 
         Deployment existing = client.apps().deployments().inNamespace(namespace).withName(name).get();
         if (existing == null) {

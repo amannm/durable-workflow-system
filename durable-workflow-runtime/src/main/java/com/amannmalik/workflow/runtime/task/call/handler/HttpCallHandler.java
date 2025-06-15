@@ -37,7 +37,9 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
         }
         Object ep = with.getEndpoint().get();
         String epStr = ep instanceof URI u ? u.toString() : ep.toString();
-        epStr = ExpressionResolver.resolveExpressions(ctx, epStr);
+        epStr =
+                ExpressionResolver.resolveExpressions(ctx, epStr)
+                        .orElseThrow();
         URI uri = URI.create(epStr);
 
         if (with.getQuery() != null && with.getQuery().getHTTPQuery() != null) {
@@ -49,7 +51,10 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
                         (k, v) ->
                                 sb.append(k)
                                         .append("=")
-                                        .append(ExpressionResolver.resolveExpressions(ctx, v))
+                                        .append(
+                                                ExpressionResolver
+                                                        .resolveExpressions(ctx, v)
+                                                        .orElse("") )
                                         .append("&"));
                 sb.setLength(sb.length() - 1);
                 uri = URI.create(sb.toString());
@@ -63,7 +68,13 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
             with.getHeaders()
                     .getHTTPHeaders()
                     .getAdditionalProperties()
-                    .forEach((k, v) -> builder.header(k, ExpressionResolver.resolveExpressions(ctx, v)));
+                    .forEach(
+                            (k, v) ->
+                                    builder.header(
+                                            k,
+                                            ExpressionResolver
+                                                    .resolveExpressions(ctx, v)
+                                                    .orElse("")));
         }
 
         Object body = with.getBody();
@@ -71,7 +82,10 @@ public class HttpCallHandler implements CallHandler<CallHTTP> {
             if (body instanceof String s) {
                 builder.method(
                         method,
-                        BodyPublishers.ofString(ExpressionResolver.resolveExpressions(ctx, s)));
+                        BodyPublishers.ofString(
+                                ExpressionResolver
+                                        .resolveExpressions(ctx, s)
+                                        .orElse("")));
             } else {
                 builder.method(method, BodyPublishers.noBody());
             }
