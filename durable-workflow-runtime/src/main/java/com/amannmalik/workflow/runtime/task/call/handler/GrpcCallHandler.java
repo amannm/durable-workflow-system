@@ -65,17 +65,14 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
         if (descs.containsKey(proto.getName())) {
             return descs.get(proto.getName());
         }
-        List<FileDescriptor> deps =
-                new ArrayList<>();
+        List<FileDescriptor> deps = new ArrayList<>();
         for (String depName : proto.getDependencyList()) {
             var depProto = protos.get(depName);
             if (depProto != null) {
                 deps.add(buildFileDescriptor(depProto, protos, descs));
             }
         }
-        FileDescriptor fd =
-                FileDescriptor.buildFrom(
-                        proto, deps.toArray(new FileDescriptor[0]));
+        FileDescriptor fd = FileDescriptor.buildFrom(proto, deps.toArray(new FileDescriptor[0]));
         descs.put(proto.getName(), fd);
         return fd;
     }
@@ -87,37 +84,16 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
             return;
         }
         try {
-            Object ep = with.getProto().getEndpoint().get();
-            String protoStr;
-            if (ep instanceof URI u) {
-                protoStr = u.toString();
-            } else if (ep instanceof EndpointConfiguration cfg) {
-                Object uo = cfg.getUri().get();
-                if (uo instanceof UriTemplate ut
-                        && ut.getLiteralUri() != null) {
-                    protoStr = ut.getLiteralUri().toString();
-                } else {
-                    protoStr = uo.toString();
-                }
-            } else {
-                protoStr = ep.toString();
-            }
-            protoStr =
-                    ExpressionResolver.resolveExpressions(ctx, protoStr)
-                            .orElseThrow();
+            String protoStr = render(with.getProto().getEndpoint().get());
+            protoStr = ExpressionResolver.resolveExpressions(ctx, protoStr).orElseThrow();
             Path protoPath = Path.of(URI.create(protoStr));
-
             FileDescriptorSet fdset;
             if (protoPath.toString().endsWith(".desc") || protoPath.toString().endsWith(".pb")) {
-                fdset =
-                        FileDescriptorSet.parseFrom(
-                                Files.readAllBytes(protoPath));
+                fdset = FileDescriptorSet.parseFrom(Files.readAllBytes(protoPath));
             } else {
                 Path descPath = Files.createTempFile("proto", ".desc");
-                String protocExe =
-                        System.getenv().getOrDefault("PROTOC", System.getProperty("protoc", "/usr/bin/protoc"));
-                Process proc =
-                        new ProcessBuilder(
+                String protocExe = System.getenv().getOrDefault("PROTOC", System.getProperty("protoc", "/usr/bin/protoc"));
+                Process proc = new ProcessBuilder(
                                 protocExe,
                                 "-I",
                                 ".",
@@ -130,23 +106,17 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
                     String err = new String(proc.getErrorStream().readAllBytes());
                     throw new IllegalStateException("protoc failed: " + err);
                 }
-                fdset =
-                        FileDescriptorSet.parseFrom(
-                                Files.readAllBytes(descPath));
+                fdset = FileDescriptorSet.parseFrom(Files.readAllBytes(descPath));
             }
 
-            Map<String, FileDescriptorProto> protos =
-                    new HashMap<>();
+            Map<String, FileDescriptorProto> protos = new HashMap<>();
             for (var fdp : fdset.getFileList()) {
                 protos.put(fdp.getName(), fdp);
             }
-
-            Map<String, FileDescriptor> descs =
-                    new HashMap<>();
+            Map<String, FileDescriptor> descs = new HashMap<>();
             for (var fdp : fdset.getFileList()) {
                 buildFileDescriptor(fdp, protos, descs);
             }
-
             String svcName = with.getService().getName();
             ServiceDescriptor svcDesc = null;
             for (var fd : descs.values()) {
@@ -161,59 +131,38 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
                 log.warn("Service not found: {}", svcName);
                 return;
             }
-
             var methodDesc = svcDesc.findMethodByName(with.getMethod());
             if (methodDesc == null) {
                 log.warn("Method not found: {}", with.getMethod());
                 return;
             }
-
             Map<String, Object> args = Collections.emptyMap();
             if (with.getArguments() != null) {
                 args = with.getArguments().getAdditionalProperties();
             }
-
-            Builder reqBuilder =
-                    DynamicMessage.newBuilder(methodDesc.getInputType());
+            Builder reqBuilder = DynamicMessage.newBuilder(methodDesc.getInputType());
             for (var e : args.entrySet()) {
                 var fd = methodDesc.getInputType().findFieldByName(e.getKey());
                 if (fd != null) {
                     reqBuilder.setField(fd, convertValue(fd, e.getValue()));
                 }
             }
-
             DynamicMessage request = reqBuilder.build();
-
             int port = with.getService().getPort();
             if (port == 0) {
                 port = 80;
             }
-            ManagedChannel channel =
-                    ManagedChannelBuilder.forAddress(with.getService().getHost(), port)
+            ManagedChannel channel = ManagedChannelBuilder.forAddress(with.getService().getHost(), port)
                             .usePlaintext()
                             .build();
             try {
-                MethodDescriptor<
-                        DynamicMessage, DynamicMessage>
-                        md =
-                        MethodDescriptor
-                                .<DynamicMessage, DynamicMessage>
-                                        newBuilder()
+                MethodDescriptor<DynamicMessage, DynamicMessage> md = MethodDescriptor.<DynamicMessage, DynamicMessage>newBuilder()
                                 .setType(MethodType.UNARY)
-                                .setFullMethodName(
-                                        MethodDescriptor.generateFullMethodName(svcName, with.getMethod()))
-                                .setRequestMarshaller(
-                                        ProtoUtils.marshaller(
-                                                DynamicMessage.getDefaultInstance(
-                                                        methodDesc.getInputType())))
-                                .setResponseMarshaller(
-                                        ProtoUtils.marshaller(
-                                                DynamicMessage.getDefaultInstance(
-                                                        methodDesc.getOutputType())))
+                        .setFullMethodName(MethodDescriptor.generateFullMethodName(svcName, with.getMethod()))
+                        .setRequestMarshaller(ProtoUtils.marshaller(DynamicMessage.getDefaultInstance(methodDesc.getInputType())))
+                        .setResponseMarshaller(ProtoUtils.marshaller(DynamicMessage.getDefaultInstance(methodDesc.getOutputType())))
                                 .build();
-                DynamicMessage response =
-                        ClientCalls.blockingUnaryCall(
-                                channel, md, CallOptions.DEFAULT, request);
+                DynamicMessage response = ClientCalls.blockingUnaryCall(channel, md, CallOptions.DEFAULT, request);
                 String json = JsonFormat.printer().print(response);
                 try {
                     ctx.set(resultKey, MAPPER.readValue(json, Object.class));
@@ -225,6 +174,21 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
             }
         } catch (Exception e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private static String render(Object ep) {
+        if (ep instanceof URI u) {
+            return u.toString();
+        } else if (ep instanceof EndpointConfiguration cfg) {
+            Object uo = cfg.getUri().get();
+            if (uo instanceof UriTemplate ut && ut.getLiteralUri() != null) {
+                return ut.getLiteralUri().toString();
+            } else {
+                return uo.toString();
+            }
+        } else {
+            return ep.toString();
         }
     }
 }
