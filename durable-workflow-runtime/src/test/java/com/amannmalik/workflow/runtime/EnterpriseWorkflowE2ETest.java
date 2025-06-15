@@ -10,6 +10,8 @@ import dev.restate.common.Output;
 import dev.restate.common.Request;
 import dev.restate.common.Target;
 import dev.restate.sdk.*;
+import dev.restate.sdk.endpoint.definition.HandlerContext;
+import dev.restate.sdk.endpoint.definition.AsyncResult;
 import dev.restate.sdk.common.HandlerRequest;
 import dev.restate.sdk.common.RetryPolicy;
 import dev.restate.sdk.common.StateKey;
@@ -70,22 +72,37 @@ class EnterpriseWorkflowE2ETest {
             Object req = request.getRequest();
             if ("WaitTaskService".equals(svc) && "execute".equals(m)) {
                 WaitTaskService.execute(this, (WaitTask) req);
+                return completed();
             } else if ("ForkTaskService".equals(svc) && "execute".equals(m)) {
                 ForkTaskService.execute(this, (ForkTask) req);
+                return completed();
             } else if ("RunTaskService".equals(svc) && "execute".equals(m)) {
                 RunTaskService.execute(this, (RunTask) req);
+                return completed();
             } else if ("SetTaskService".equals(svc) && "execute".equals(m)) {
                 SetTaskService.execute(this, (SetTask) req);
+                return completed();
             } else if ("SwitchTaskService".equals(svc) && "execute".equals(m)) {
                 SwitchTaskService.execute(this, (SwitchTask) req);
+                return completed();
             } else if ("CallTaskService".equals(svc) && "execute".equals(m)) {
                 CallTaskService.execute(this, (CallTask) req);
+                return completed();
             } else if ("ListenTaskService".equals(svc) && "execute".equals(m)) {
                 ListenTaskService.execute(this, (ListenTask) req);
+                return completed();
             } else if ("EmitTaskService".equals(svc) && "execute".equals(m)) {
                 EmitTaskService.execute(this, (EmitTask) req);
+                return completed();
             } else if ("TryTaskService".equals(svc) && "execute".equals(m)) {
                 TryTaskService.execute(this, (TryTask) req);
+                return completed();
+            } else if ("WorkflowTaskService".equals(svc) && "execute".equals(m)) {
+                WorkflowTaskService.execute(this, (Task) req);
+                return completed();
+            } else if ("WorkflowRunner".equals(svc) && "runInternal".equals(m)) {
+                WorkflowRunner.runInternal(this, (Workflow) req);
+                return completed();
             }
             return null;
         }
@@ -105,6 +122,24 @@ class EnterpriseWorkflowE2ETest {
         @Override public void clearAll() { state.clear(); }
         @Override public <T> void set(StateKey<T> key, T value) { state.put(key.name(), value); }
         @Override public void sleep(Duration d) { sleeps.add(d); }
+
+        private <R> CallDurableFuture<R> completed() {
+            try {
+                var ctor = CallDurableFuture.class.getDeclaredConstructor(
+                        HandlerContext.class,
+                        AsyncResult.class,
+                        DurableFuture.class
+                );
+                ctor.setAccessible(true);
+                return (CallDurableFuture<R>) ctor.newInstance(
+                        null,
+                        new SimpleAsyncResult<>(null),
+                        new SimpleDurableFuture<>("id")
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     @BeforeEach
