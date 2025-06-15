@@ -3,6 +3,7 @@ package com.amannmalik.workflow.runtime.task.run;
 import com.amannmalik.workflow.runtime.DefinitionHelper;
 import com.amannmalik.workflow.runtime.WorkflowRegistry;
 import com.amannmalik.workflow.runtime.WorkflowRunner;
+import com.amannmalik.workflow.runtime.Services;
 import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import io.serverlessworkflow.api.types.RunContainer;
@@ -68,7 +69,7 @@ public class RunTaskService {
             log.warn("Sub-workflow not found: {}:{}:{}", cfg.getNamespace(), cfg.getName(), cfg.getVersion());
             return;
         }
-        new WorkflowRunner().runInternal(ctx, wf);
+        Services.callService(ctx, "WorkflowRunner", "runInternal", wf, Void.class).await();
     }
 
 }

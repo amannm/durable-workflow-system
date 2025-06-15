@@ -4,6 +4,7 @@ import dev.restate.sdk.WorkflowContext;
 import dev.restate.sdk.common.StateKey;
 import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import com.amannmalik.workflow.runtime.DefinitionHelper;
+import com.amannmalik.workflow.runtime.Services;
 import io.serverlessworkflow.api.types.TaskItem;
 import io.serverlessworkflow.api.types.TryTask;
 import io.serverlessworkflow.api.types.TryTaskCatch;
@@ -27,7 +28,7 @@ public class TryTaskService {
         TryTaskCatch aCatch = task.getCatch();
         try {
             for (var ti : aTry) {
-                new WorkflowTaskService().execute(ctx, ti.getTask());
+                Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
             }
         } catch (Exception e) {
             if (aCatch == null) {
@@ -46,7 +47,7 @@ public class TryTaskService {
 
             if (aCatch.getDo() != null) {
                 for (var ti : aCatch.getDo()) {
-                    new WorkflowTaskService().execute(ctx, ti.getTask());
+                    Services.callService(ctx, "WorkflowTaskService", "execute", ti.getTask(), Void.class).await();
                 }
             }
         }

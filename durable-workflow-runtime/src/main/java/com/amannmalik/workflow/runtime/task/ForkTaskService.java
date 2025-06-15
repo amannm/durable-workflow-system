@@ -7,6 +7,7 @@ import dev.restate.sdk.endpoint.definition.ServiceDefinition;
 import dev.restate.serde.TypeTag;
 import dev.restate.serde.jackson.JacksonSerdes;
 import com.amannmalik.workflow.runtime.DefinitionHelper;
+import com.amannmalik.workflow.runtime.Services;
 import io.serverlessworkflow.api.types.ForkTask;
 import io.serverlessworkflow.api.types.TaskItem;
 
@@ -27,7 +28,7 @@ public class ForkTaskService {
         for (TaskItem item : fork.getBranches()) {
             String name = "branch-" + (i++);
             futures.add(ctx.runAsync(name, TypeTag.of(Void.class), RetryPolicy.defaultPolicy(), () -> {
-                new WorkflowTaskService().execute(ctx, item.getTask());
+                Services.callService(ctx, "WorkflowTaskService", "execute", item.getTask(), Void.class).await();
                 return null;
             }));
         }
