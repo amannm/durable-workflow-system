@@ -18,7 +18,7 @@ class SetTaskServiceTest {
         s.setString("foo");
         st.setSet(s);
         SetTaskService.execute(ctx, st);
-        assertEquals("foo", ctx.get(StateKey.of("foo", String.class)).orElse(null));
+        assertEquals("foo", ctx.get(StateKey.of("foo", String.class)).orElseThrow());
     }
 
     @Test
@@ -32,8 +32,8 @@ class SetTaskServiceTest {
         s.setSetTaskConfiguration(cfg);
         st.setSet(s);
         SetTaskService.execute(ctx, st);
-        assertEquals("b", ctx.get(StateKey.of("a", String.class)).orElse(null));
-        assertEquals(1, ctx.get(StateKey.of("n", Integer.class)).orElse(null));
+        assertEquals("b", ctx.get(StateKey.of("a", String.class)).orElseThrow());
+        assertEquals(1, ctx.get(StateKey.of("n", Integer.class)).orElseThrow());
     }
 
     static class FakeContext extends FakeWorkflowContext {

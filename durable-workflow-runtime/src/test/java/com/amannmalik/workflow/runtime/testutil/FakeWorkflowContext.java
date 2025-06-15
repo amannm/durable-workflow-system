@@ -85,7 +85,10 @@ public class FakeWorkflowContext implements WorkflowContext {
             RetryPolicy policy,
             ThrowingSupplier<T> supplier) {
         try {
-            return new SimpleDurableFuture<>(supplier == null ? null : supplier.get());
+            if (supplier == null) {
+                return new SimpleDurableFuture<>(null);
+            }
+            return new SimpleDurableFuture<>(supplier.get());
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }

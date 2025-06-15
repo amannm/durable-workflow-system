@@ -110,7 +110,7 @@ public class AsyncApiCallHandler implements CallHandler<CallAsyncAPI> {
                         && args.getProtocol().equals(server.get("protocol"))) {
                     return applyVariables(
                             (String) server.get("url"),
-                            args.getServer() == null ? null : args.getServer().getVariables());
+                            args.getServer() != null ? args.getServer().getVariables() : null);
                 }
             }
         }
@@ -118,7 +118,7 @@ public class AsyncApiCallHandler implements CallHandler<CallAsyncAPI> {
         if (v instanceof Map<?, ?> server) {
             return applyVariables(
                     (String) server.get("url"),
-                    args.getServer() == null ? null : args.getServer().getVariables());
+                    args.getServer() != null ? args.getServer().getVariables() : null);
         }
         return null;
     }
