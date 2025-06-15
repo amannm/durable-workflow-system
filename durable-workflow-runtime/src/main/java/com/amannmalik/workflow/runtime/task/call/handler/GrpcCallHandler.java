@@ -102,7 +102,9 @@ public class GrpcCallHandler implements CallHandler<CallGRPC> {
             } else {
                 protoStr = ep.toString();
             }
-            protoStr = ExpressionResolver.resolveExpressions(ctx, protoStr);
+            protoStr =
+                    ExpressionResolver.resolveExpressions(ctx, protoStr)
+                            .orElseThrow();
             Path protoPath = Path.of(URI.create(protoStr));
 
             FileDescriptorSet fdset;

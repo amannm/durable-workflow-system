@@ -25,13 +25,13 @@ class ExpressionResolver {
     private ExpressionResolver() {
     }
 
-    static String resolveExpressions(WorkflowContext ctx, String value) {
+    static java.util.Optional<String> resolveExpressions(WorkflowContext ctx, String value) {
         if (value == null) {
-            return null;
+            return java.util.Optional.empty();
         }
         value = substitute(ctx, value, Pattern.compile("\\$\\{([^}]+)}"));
         value = substitute(ctx, value, Pattern.compile("\\{([^}]+)}"));
-        return value;
+        return java.util.Optional.of(value);
     }
 
     private static String substitute(WorkflowContext ctx, String value, Pattern pattern) {

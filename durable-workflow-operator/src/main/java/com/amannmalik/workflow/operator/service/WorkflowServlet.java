@@ -29,11 +29,11 @@ public class WorkflowServlet extends HttpServlet {
             ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
             mapper.registerModule(new JavaTimeModule());
             DurableWorkflow workflow = mapper.readValue(req.getInputStream(), DurableWorkflow.class);
-            String ns = workflow.getMetadata().getNamespace();
-            if (ns == null || ns.isBlank()) {
-                ns = "default";
-                workflow.getMetadata().setNamespace(ns);
-            }
+            String ns =
+                    java.util.Optional.ofNullable(workflow.getMetadata().getNamespace())
+                            .filter(s -> !s.isBlank())
+                            .orElse("default");
+            workflow.getMetadata().setNamespace(ns);
             client.resource(workflow).inNamespace(ns).createOrReplace();
             resp.setStatus(HttpServletResponse.SC_CREATED);
         } catch (Exception e) {
