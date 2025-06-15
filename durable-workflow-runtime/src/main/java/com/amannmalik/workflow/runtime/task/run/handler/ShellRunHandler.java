@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShellRunHandler implements RunHandler<RunShell> {
+public final class ShellRunHandler implements RunHandler<RunShell> {
   private static final Logger log = LoggerFactory.getLogger(ShellRunHandler.class);
 
   @Override

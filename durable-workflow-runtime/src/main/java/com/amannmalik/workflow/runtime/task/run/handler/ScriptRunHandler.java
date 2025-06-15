@@ -5,7 +5,7 @@ import io.serverlessworkflow.api.types.RunScript;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ScriptRunHandler implements RunHandler<RunScript> {
+public final class ScriptRunHandler implements RunHandler<RunScript> {
     private static final Logger log = LoggerFactory.getLogger(ScriptRunHandler.class);
 
     @Override

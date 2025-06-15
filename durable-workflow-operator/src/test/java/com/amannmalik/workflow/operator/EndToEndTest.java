@@ -27,10 +27,14 @@ public class EndToEndTest {
     @Test
     void testNewDeployment() throws Exception {
         var servlet = new WorkflowServlet(client);
-        String yaml = "apiVersion: amannmalik.com/v1alpha1\n" +
-                "kind: DurableWorkflow\n" +
-                "metadata:\n  name: wf\n" +
-                "spec:\n  definition: {}\n";
+        String yaml = """
+                apiVersion: amannmalik.com/v1alpha1
+                kind: DurableWorkflow
+                metadata:
+                  name: wf
+                spec:
+                  definition: {}
+                """;
         HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
         ServletInputStream sis = new ServletInputStream() {
             private final java.io.InputStream in = new java.io.ByteArrayInputStream(yaml.getBytes(java.nio.charset.StandardCharsets.UTF_8));
